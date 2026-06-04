@@ -1,5 +1,5 @@
 // ── Service Worker – Schmerz & RLS Tagebuch ──
-const CACHE_NAME = 'schmerztagebuch-v1';
+const CACHE_NAME = 'schmerztagebuch-v3';
 const ASSETS = [
   './',
   './index.html',

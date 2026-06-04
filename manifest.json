@@ -1,7 +1,7 @@
 {
   "name": "Schmerz & RLS Tagebuch",
   "short_name": "Schmerztagebuch",
-  "description": "Tägliche Erfassung von Schmerzintensität und Restless-Legs-Syndrom",
+  "description": "Schmerz & RLS Tagebuch mit Schlaf, RLS-Doku, Fragebögen, Medikamentenplan und Auswertungen",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait-primary",

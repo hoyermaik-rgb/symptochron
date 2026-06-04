@@ -712,6 +712,226 @@
       margin-bottom: 14px;
     }
     .section-title { font-size: 16px; font-weight: 600; color: var(--text-1); }
+
+    .info-banner {
+      background: rgba(59,158,255,0.08);
+      border: 1px solid rgba(59,158,255,0.25);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      color: var(--text-2);
+      line-height: 1.6;
+    }
+    .info-banner.warn {
+      background: rgba(245,158,11,0.08);
+      border-color: rgba(245,158,11,0.35);
+    }
+    .info-banner strong { color: var(--text-1); }
+
+    .sleep-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 400px) { .sleep-grid { grid-template-columns: 1fr; } }
+
+    .rls-table-wrap { overflow-x: auto; margin-top: 12px; }
+    .rls-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .rls-table th, .rls-table td {
+      border: 1px solid var(--border);
+      padding: 8px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .rls-table th {
+      background: var(--bg-card2);
+      color: var(--text-2);
+      font-weight: 600;
+    }
+
+    .survey-q {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .survey-q p { font-size: 12px; color: var(--text-1); margin-bottom: 8px; line-height: 1.5; }
+    .survey-scale { display: flex; gap: 6px; flex-wrap: wrap; }
+    .scale-btn {
+      flex: 1;
+      min-width: 36px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      padding: 8px 4px;
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .scale-btn:hover { border-color: var(--accent-rls); color: var(--text-1); }
+    .scale-btn.selected {
+      background: rgba(167,139,250,0.2);
+      border-color: var(--accent-rls);
+      color: var(--accent-rls);
+      font-weight: 600;
+    }
+
+    .sum-box {
+      background: linear-gradient(135deg, rgba(167,139,250,0.15), rgba(59,158,255,0.1));
+      border: 1px solid var(--accent-rls);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+      margin: 14px 0;
+    }
+    .sum-val { font-family: var(--mono); font-size: 32px; font-weight: 600; color: var(--accent-rls); }
+    .sum-label { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+    .severity-badge {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(167,139,250,0.2);
+      color: var(--accent-rls);
+    }
+
+    .corr-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .corr-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+    .corr-item .corr-pair { color: var(--text-2); flex: 1; padding-right: 8px; }
+    .corr-item .corr-val {
+      font-family: var(--mono);
+      font-weight: 600;
+      color: var(--accent-2);
+    }
+    .corr-item .corr-val.weak { color: var(--text-3); }
+    .corr-item .corr-val.moderate { color: var(--accent-1); }
+    .corr-item .corr-val.strong { color: var(--accent-2); }
+
+    .interaction-box {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-top: 16px;
+    }
+    .interaction-item {
+      border-left: 3px solid var(--accent-pain);
+      padding: 8px 0 8px 12px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .interaction-item.severity-high { border-color: #ff6b6b; }
+    .interaction-item.severity-moderate { border-color: #f59e0b; }
+    .interaction-item.severity-low { border-color: var(--accent-2); }
+
+    .hw-disclaimer {
+      font-size: 11px;
+      color: var(--text-3);
+      line-height: 1.6;
+      margin-top: 12px;
+      padding: 10px;
+      background: rgba(255,107,107,0.05);
+      border: 1px solid rgba(255,107,107,0.15);
+      border-radius: var(--radius-sm);
+    }
+
+    .badge-pill {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 100px;
+      background: rgba(167,139,250,0.2);
+      color: var(--accent-rls);
+      margin-left: 6px;
+    }
+    .badge-pill.active { background: rgba(0,212,170,0.2); color: var(--accent-2); }
+
+    .tag-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      padding: 8px 14px;
+      border-radius: 100px;
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tag-btn.on {
+      background: rgba(59,158,255,0.15);
+      border-color: var(--accent-1);
+      color: var(--accent-1);
+    }
+
+    .input-with-voice { display: flex; gap: 8px; align-items: stretch; }
+    .input-with-voice .form-input, .input-with-voice .notes-area { flex: 1; }
+    .voice-btn {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      width: 42px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .voice-btn.listening { border-color: var(--accent-pain); color: var(--accent-pain); animation: pulse 1s infinite; }
+    @keyframes pulse { 50% { opacity: 0.6; } }
+
+    .smart-insight {
+      background: var(--bg-card2);
+      border-left: 3px solid var(--accent-2);
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-1);
+    }
+    .smart-insight.warn { border-left-color: var(--accent-pain); }
+
+    .med-warn-icon {
+      color: var(--accent-pain);
+      font-size: 18px;
+      flex-shrink: 0;
+      cursor: help;
+    }
+
+    .med-intake-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .med-intake-row:last-child { border-bottom: none; }
   </style>
 </head>
 <body>
@@ -723,7 +943,7 @@
       <div class="header-logo">🩺</div>
       <div>
         <div class="header-title">Schmerztagebuch</div>
-        <div class="header-subtitle">Schmerz & RLS Erfassung</div>
+        <div class="header-subtitle">Schmerz, RLS, Schlaf & Medikation</div>
       </div>
     </div>
     <div class="header-date" id="headerDate">–</div>
@@ -734,6 +954,10 @@
     <button class="nav-tab active" onclick="switchTab('diary')" data-tab="diary">
       <span class="tab-icon">📋</span>
       <span>Tagebuch</span>
+    </button>
+    <button class="nav-tab" onclick="switchTab('rls')" data-tab="rls">
+      <span class="tab-icon">🦵</span>
+      <span>RLS</span>
     </button>
     <button class="nav-tab" onclick="switchTab('meds')" data-tab="meds">
       <span class="tab-icon">💊</span>
@@ -774,6 +998,58 @@
         <!-- Injected by JS -->
       </div>
 
+      <!-- Influence factors -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(245,158,11,0.1)">🏷️</div>
+          <div>
+            <div class="card-title">Einflussfaktoren</div>
+            <div class="card-subtitle">Für Mustererkennung in der Statistik</div>
+          </div>
+        </div>
+        <div class="tag-row" id="influenceTags"></div>
+      </div>
+
+      <!-- Med intake today -->
+      <div class="card" id="medIntakeCard" style="display:none">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(0,212,170,0.1)">💊</div>
+          <div>
+            <div class="card-title">Medikamente heute eingenommen</div>
+            <div class="card-subtitle">Für „Smarte Analyse“ im Statistik-Tab</div>
+          </div>
+        </div>
+        <div id="medIntakeList"></div>
+      </div>
+
+      <!-- Sleep -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(59,158,255,0.1)">😴</div>
+          <div>
+            <div class="card-title">Schlaf (subjektiv)</div>
+            <div class="card-subtitle">Dauer und Qualität der letzten Nacht</div>
+          </div>
+        </div>
+        <div class="sleep-grid">
+          <div class="form-group">
+            <label class="form-label">Schlafdauer (Stunden)</label>
+            <input class="form-input" type="number" id="sleepHours" min="0" max="24" step="0.5" placeholder="z.B. 6.5" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Schlafqualität (1–5)</label>
+            <select class="form-input" id="sleepQuality">
+              <option value="">– nicht angegeben –</option>
+              <option value="1">1 – sehr schlecht</option>
+              <option value="2">2 – schlecht</option>
+              <option value="3">3 – mäßig (häufig wach)</option>
+              <option value="4">4 – gut</option>
+              <option value="5">5 – sehr gut</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <!-- Daily Notes -->
       <div class="card">
         <div class="card-header">
@@ -783,9 +1059,12 @@
             <div class="card-subtitle">Auslöser, Essen, Maßnahmen (z.B. „heißes Bad")</div>
           </div>
         </div>
-        <textarea class="notes-area" id="dailyNotes"
-          placeholder="Heute bemerkt: Schlafqualität, Stress, Aktivitäten, Auslöser, hilfreiche Maßnahmen..."
-          rows="4"></textarea>
+        <div class="input-with-voice">
+          <textarea class="notes-area" id="dailyNotes"
+            placeholder="Heute bemerkt: Schlafqualität, Stress, Aktivitäten, Auslöser, hilfreiche Maßnahmen..."
+            rows="4"></textarea>
+          <button type="button" class="voice-btn" title="Spracheingabe" onclick="startVoiceInput('dailyNotes', this)">🎤</button>
+        </div>
       </div>
 
       <!-- Save Button -->
@@ -793,8 +1072,211 @@
       <div class="bottom-spacer"></div>
     </section>
 
+    <!-- ═══════════════ RLS TAB ═══════════════ -->
+    <section class="tab-section" id="tab-rls">
+
+      <div id="rlsPreVisitBanner" class="info-banner warn" style="display:none"></div>
+      <div id="rlsSurveyBanner" class="info-banner" style="display:none"></div>
+
+      <!-- RLS mode -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(167,139,250,0.15)">⚙️</div>
+          <div>
+            <div class="card-title">RLS-Erfassungsmodus</div>
+            <div class="card-subtitle">Ausführlich vor dem Arzt oder wöchentlicher Kurzfragebogen</div>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label class="form-label">Modus</label>
+            <select class="form-input" id="rlsMode" onchange="saveRlsModeSettings()">
+              <option value="auto">Automatisch: ausführlich vor Termin, sonst wöchentlich</option>
+              <option value="detailed_only">Nur ausführliche Tagesdoku (beste Auswertung)</option>
+              <option value="weekly_only">Nur RLS-6 Kurzfragebogen (wöchentlich)</option>
+            </select>
+          </div>
+          <div class="form-group full" id="surveyWeekdayGroup">
+            <label class="form-label">Wochentag für RLS-6 Fragebogen</label>
+            <select class="form-input" id="surveyWeekday" onchange="saveRlsModeSettings()">
+              <option value="0">Sonntag</option>
+              <option value="1">Montag</option>
+              <option value="2">Dienstag</option>
+              <option value="3">Mittwoch</option>
+              <option value="4">Donnerstag</option>
+              <option value="5">Freitag</option>
+              <option value="6">Samstag</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Appointment -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(167,139,250,0.15)">📅</div>
+          <div>
+            <div class="card-title">Facharzttermin</div>
+            <div class="card-subtitle">RLS-Facharzt oder Schmerztherapeut</div>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Terminart</label>
+            <select class="form-input" id="apptType">
+              <option value="rls">RLS-Facharzt</option>
+              <option value="pain">Schmerztherapeut</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Datum</label>
+            <input class="form-input" type="date" id="apptDate" />
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Tägliche RLS-Doku vor Termin</label>
+            <select class="form-input" id="apptPreDays">
+              <option value="7">7 Tage vorher</option>
+              <option value="14">14 Tage vorher</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-primary" style="margin-top:12px" onclick="saveAppointment()">Termin speichern</button>
+        <div id="apptList" style="margin-top:14px"></div>
+      </div>
+
+      <!-- Daily RLS Documentation -->
+      <div class="card" id="rlsDailyCard">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(167,139,250,0.15)">📋</div>
+          <div>
+            <div class="card-title">Tägliche RLS-Dokumentation</div>
+            <div class="card-subtitle" id="rlsDailySubtitle">Für den Arztbesuch – heute erfassen</div>
+          </div>
+        </div>
+        <div class="date-nav" style="margin-bottom:12px;padding:10px 12px">
+          <button class="date-nav-btn" onclick="changeRlsDay(-1)">‹</button>
+          <div class="date-nav-center">
+            <div class="date-nav-label" id="rlsDateLabel" style="font-size:13px">–</div>
+          </div>
+          <button class="date-nav-btn" onclick="changeRlsDay(1)">›</button>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Symptom-Stärke (0–10)</label>
+            <select class="form-input" id="rlsSymptom">
+              <option value="">–</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Schlafqualität (1–5)</label>
+            <select class="form-input" id="rlsSleepQuality">
+              <option value="">–</option>
+              <option value="1">1 – sehr schlecht</option>
+              <option value="2">2 – schlecht</option>
+              <option value="3">3 – mäßig</option>
+              <option value="4">4 – gut</option>
+              <option value="5">5 – sehr gut</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Beginn &amp; Dauer</label>
+            <div class="input-with-voice">
+              <input class="form-input" id="rlsBeginDuration" placeholder="z.B. 21:30 Uhr, ca. 2 Std." />
+              <button type="button" class="voice-btn" onclick="startVoiceInput('rlsBeginDuration', this)">🎤</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Einschlafzeit (ca.)</label>
+            <input class="form-input" id="rlsSleepOnset" placeholder="z.B. 23:30" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Durchschlafstörungen</label>
+            <input class="form-input" id="rlsSleepWakeups" placeholder="z.B. 3× wach" />
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Erwachen durch RLS-Symptome</label>
+            <input class="form-input" id="rlsSleepRlsWake" placeholder="z.B. ja, gegen 2 Uhr" />
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Auslöser / Besonderheiten</label>
+            <div class="input-with-voice">
+              <input class="form-input" id="rlsTriggers" placeholder="Koffein, Alkohol, Stress, langes Sitzen…" />
+              <button type="button" class="voice-btn" onclick="startVoiceInput('rlsTriggers', this)">🎤</button>
+            </div>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">
+              <input type="checkbox" id="rlsAugmentation" style="margin-right:8px;accent-color:var(--accent-rls)" />
+              Verdacht auf Augmentation (plötzlich stärkere Beschwerden)
+            </label>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Medikation (Zeit/Dosis)</label>
+            <div class="input-with-voice">
+              <input class="form-input" id="rlsMedication" placeholder="z.B. Pramipexol 0,18mg (20:00)" />
+              <button type="button" class="voice-btn" onclick="startVoiceInput('rlsMedication', this)">🎤</button>
+            </div>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Linderung durch…</label>
+            <div class="input-with-voice">
+              <input class="form-input" id="rlsRelief" placeholder="z.B. Kalte Wadenwickel, Gehen" />
+              <button type="button" class="voice-btn" onclick="startVoiceInput('rlsRelief', this)">🎤</button>
+            </div>
+          </div>
+        </div>
+        <div class="info-banner" style="margin-top:12px;font-size:11px">
+          <strong>Legende:</strong> Symptom 0 = keine, 10 = unerträglich · Schlaf 1 = sehr schlecht, 5 = durchgeschlafen ·
+          Bei Augmentation bitte Häkchen setzen und in Besonderheiten notieren.
+        </div>
+        <button class="btn-primary" style="margin-top:12px" onclick="saveRlsDaily()">RLS-Eintrag speichern</button>
+        <div class="rls-table-wrap">
+          <table class="rls-table" id="rlsDailyTable">
+            <thead>
+              <tr>
+                <th>Datum</th>
+                <th>Symptom</th>
+                <th>Beginn/Dauer</th>
+                <th>Schlaf</th>
+                <th>Auslöser</th>
+                <th>Medikation</th>
+                <th>Linderung</th>
+              </tr>
+            </thead>
+            <tbody id="rlsDailyTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 6-Day Survey -->
+      <div class="card" id="rlsSurveyCard">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(167,139,250,0.15)">📊</div>
+          <div>
+            <div class="card-title">RLS-6 Fragebogen (wöchentlich)</div>
+            <div class="card-subtitle">Kurzform · letzte 7 Tage · Skala 0–4</div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--text-2);margin-bottom:14px;line-height:1.6">
+          0 = gar nicht · 1 = leicht · 2 = mäßig · 3 = stark · 4 = sehr stark
+        </p>
+        <div id="surveyQuestions"></div>
+        <div class="sum-box">
+          <div class="sum-val" id="surveySum">– / 24</div>
+          <div class="sum-label">Summe (max. 24 Punkte)</div>
+          <div class="severity-badge" id="surveySeverity">–</div>
+        </div>
+        <button class="btn-primary" onclick="saveRlsSurvey()">Fragebogen speichern</button>
+        <div id="surveyHistory" style="margin-top:16px"></div>
+      </div>
+
+      <div class="bottom-spacer"></div>
+    </section>
+
     <!-- ═══════════════ MEDICATIONS TAB ═══════════════ -->
     <section class="tab-section" id="tab-meds">
+
+      <div id="medInteractionAlert" class="info-banner warn" style="display:none;margin-bottom:14px"></div>
 
       <div class="card-header" style="margin-bottom:14px">
         <div style="flex:1">
@@ -811,6 +1293,29 @@
       <div id="medEmpty" class="empty-state" style="display:none">
         <div class="es-icon">💊</div>
         <p>Noch keine Medikamente eingetragen.<br>Klicke auf „+ Hinzufügen" um zu beginnen.</p>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(255,107,107,0.1)">⚗️</div>
+          <div>
+            <div class="card-title">Wechselwirkungsprüfung</div>
+            <div class="card-subtitle">RxNav/RxNorm (NLM) – kostenfrei, online</div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--text-2);margin-bottom:12px;line-height:1.6">
+          Zuerst lokale Prüfung (offline) für gängige Schmerz- und RLS-Medikamente, zusätzlich RxNav/RxNorm online (Name oder PZN).
+        </p>
+        <button class="btn-primary" id="btnCheckInteractions" onclick="checkDrugInteractions()">
+          🔍 Wechselwirkungen prüfen
+        </button>
+        <div id="interactionResults" class="interaction-box" style="display:none"></div>
+        <div class="hw-disclaimer">
+          <strong>Hinweis zu Risiken und Nebenwirkungen:</strong> Diese App ersetzt keine ärztliche Beratung,
+          kein Fachpersonal (HW) und keine offizielle Arzneimittelinformation. Die RxNorm-Prüfung basiert auf
+          US-Datenbanken; PZN-Zuordnungen können unvollständig sein. Besprechen Sie Medikation und Wechselwirkungen
+          immer mit Arzt oder Apotheke. Packungsbeilage und Fachinformation beachten.
+        </div>
       </div>
 
       <div class="bottom-spacer"></div>
@@ -868,6 +1373,48 @@
         <canvas id="todChart" style="max-height:220px"></canvas>
       </div>
 
+      <!-- Smart patterns -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(0,212,170,0.1)">💡</div>
+          <div>
+            <div class="card-title">Psychologische &amp; physische Muster</div>
+            <div class="card-subtitle">Einflussfaktoren vs. Schmerz/RLS (min. 5 Tage mit/ohne Tag)</div>
+          </div>
+        </div>
+        <div id="tagPatternInsights"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(59,158,255,0.1)">💊</div>
+          <div>
+            <div class="card-title">Smarte Analyse (Medikation)</div>
+            <div class="card-subtitle">Vergleich an Einnahme- vs. Nicht-Einnahmetagen</div>
+          </div>
+        </div>
+        <div id="medEffectInsights"></div>
+      </div>
+
+      <!-- Pearson correlations -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(0,212,170,0.1)">🔗</div>
+          <div>
+            <div class="card-title">Pearson-Korrelation</div>
+            <div class="card-subtitle">Statistische Zusammenhänge (min. 5 gemeinsame Tage)</div>
+          </div>
+        </div>
+        <p style="font-size:11px;color:var(--text-3);margin-bottom:12px">
+          r nahe +1: positiver Zusammenhang · r nahe −1: negativ · |r| &lt; 0,3: schwach
+        </p>
+        <div class="corr-grid" id="correlationGrid">
+          <div class="empty-state" style="padding:20px">
+            <p>Noch zu wenig Daten für Korrelationen.</p>
+          </div>
+        </div>
+      </div>
+
       <div class="bottom-spacer"></div>
     </section>
 
@@ -909,8 +1456,8 @@
           <div class="card-title">CSV-Format</div>
         </div>
         <div style="font-size:12px;color:var(--text-2);line-height:1.8;">
-          <div style="font-family:var(--mono);background:var(--bg-input);padding:12px;border-radius:8px;font-size:11px;color:var(--accent-2);overflow-x:auto;margin-bottom:10px;">datum,morgen_schmerz,morgen_rls,mittag_schmerz,mittag_rls,abend_schmerz,abend_rls,nacht_schmerz,nacht_rls,notizen<br>2024-01-15,3,2,4,5,6,7,5,8,Ruhiger Tag...</div>
-          <p>Datum im Format JJJJ-MM-TT · Werte 0–10 · Notizen optional</p>
+          <div style="font-family:var(--mono);background:var(--bg-input);padding:12px;border-radius:8px;font-size:11px;color:var(--accent-2);overflow-x:auto;margin-bottom:10px;">datum,...,schlafdauer_stunden,schlafqualitaet_1_5,notizen<br>2024-01-15,3,2,4,5,6,7,5,8,6.5,4,Ruhiger Tag...</div>
+          <p>Datum JJJJ-MM-TT · Schmerz/RLS 0–10 · Schlaf optional · JSON-Backup enthält RLS &amp; Termine</p>
         </div>
       </div>
 
@@ -939,7 +1486,11 @@
     <div class="form-grid">
       <div class="form-group full">
         <label class="form-label">Medikamentenname</label>
-        <input class="form-input" id="medName" placeholder="z.B. Ibuprofen 400" />
+        <input class="form-input" id="medName" placeholder="z.B. Pramipexol, Ibuprofen 400" />
+      </div>
+      <div class="form-group full">
+        <label class="form-label">PZN (optional, 8-stellig)</label>
+        <input class="form-input" id="medPzn" placeholder="z.B. 01000000" maxlength="8" inputmode="numeric" />
       </div>
       <div class="form-group">
         <label class="form-label">Dosis</label>
