@@ -30,17 +30,25 @@ function closeScannerModal() {
 }
 
 // Startet die Kamera-Übertragung im vordefinierten Container
-function startQRScanner() {
-  // Konfiguration für den Scanner
-  const config = { 
-    fps: 10, 
-    qrbox: { width: 250, height: 250 },
-    aspectRatio: 1.0
+const config = { 
+    fps: 20, // Höhere Bildrate für schnelleres Erfassen
+    qrbox: function(viewfinderWidth, viewfinderHeight) {
+      // Dynamische Box: Nutzt 75% des Bildschirms, damit man den Code gut sieht
+      const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+      const fontSize = Math.floor(minEdge * 0.75);
+      return { width: fontSize, height: fontSize };
+    },
+    aspectRatio: 1.0,
+    // EXPLIZIT: Erlaubt QR-Codes UND die auf Medikationsplänen genutzten DataMatrix-Codes
+    formatsToSupport: [ 
+      Html5QrcodeSupportedFormats.QR_CODE, 
+      Html5QrcodeSupportedFormats.DATA_MATRIX 
+    ]
   };
 
   html5QrScanner = new Html5Qrcode("scanner-video-container");
   
-  // Kamera starten (Nutzt standardmäßig die Rückkamera beim Smartphone)
+  // Kamera starten
   html5QrScanner.start(
     { facingMode: "environment" }, 
     config,
@@ -69,29 +77,33 @@ function onScanFailure(error) {
 }
 
 // ══════════════════════════════════════════════
-// BMP-PARSER ENGINE (Entschlüsselung)
+// BMP-PARSER ENGINE (An dein System angepasst)
 // ══════════════════════════════════════════════
 function parseMedicationPlan(text) {
   try {
-    // Überprüfung, ob es sich um den offiziellen Bundesmedikationsplan handelt
+    // Überprüfung auf offiziellen Bundesmedikationsplan
     if (!text.startsWith("MP")) {
-      // Fallback: Wenn es ein normaler QR-Code mit Text/JSON ist
       attemptSimpleImport(text);
       return;
     }
 
-    // BMP-Daten nutzen oft das Steuerzeichen US (Unit Separator, \x1F) oder ';' als Trenner
-    // Hier splitten wir den String auf, um an die Medikamentenblöcke zu kommen
+    // BMP-Daten nutzen das Steuerzeichen US (\x1F) oder ';' als Trenner
     let delimiter = text.includes("\x1F") ? "\x1F" : ";";
     const tokens = text.split(delimiter);
     
-    // In einem echten BMP stehen ab einer bestimmten Position die Medikamente (gekennzeichnet mit "M")
-    // Format oft: M (für Medikament), PZN, Name, Stärke, Form, Morgens, Mittags, Abends, Nachts...
+    // Bestehende Medikamente über deine diary.js-Funktion laden
+    let meds = [];
+    if (typeof getMeds === 'function') {
+      meds = getMeds();
+    } else {
+      meds = JSON.parse(localStorage.getItem('painDiaryMeds') || '[]');
+    }
+
     let addedCount = 0;
 
     for (let i = 0; i < tokens.length; i++) {
       if (tokens[i] === "M" || tokens[i].startsWith("M")) {
-        // Ein Medikamentenblock wurde gefunden!
+        // Ein Medikamentenblock wurde im BMP-String gefunden
         const name = tokens[i + 2] || "Unbekanntes Medikament";
         const dose = tokens[i + 3] || "";
         const form = tokens[i + 4] || "";
@@ -103,87 +115,118 @@ function parseMedicationPlan(text) {
         const night = parseFloat(tokens[i + 8]) || 0;
         const pzn = tokens[i + 1] || "";
 
-        // Neues Medikamenten-Objekt für deinen bestehenden Medikamentenplan bauen
+        // Abwärtskompatiblen Zeilenstring für die Anzeige bauen wie in diary.js
+        const timeLabels = [];
+        if (morning) timeLabels.push(`${morning}× Morgens`);
+        if (noon)    timeLabels.push(`${noon}× Mittags`);
+        if (evening) timeLabels.push(`${evening}× Abends`);
+        if (night)   timeLabels.push(`${night}× Nachts`);
+        const timeStr = timeLabels.join(' · ');
+
+        // Objekt exakt so aufbauen, wie es diary.js erwartet:
         const scannedMed = {
-          id: 'med_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          id: Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 3),
           name: name,
-          pzn: pzn,
+          pzn: pzn || undefined,
           dose: dose,
-          form: form,
-          morning: morning,
-          noon: noon,
-          evening: evening,
-          night: night,
+          form: form || undefined,
+          schedule: {
+            morning: morning,
+            noon: noon,
+            evening: evening,
+            night: night
+          },
+          time: timeStr,
           note: "Via QR-Code importiert"
         };
 
-        if (!appData.medications) appData.medications = [];
-        appData.medications.push(scannedMed);
+        meds.push(scannedMed);
         addedCount++;
         
-        // Index weiterspringen, um das eingelesene Objekt zu überspringen
+        // Index weiterspringen
         i += 8; 
       }
     }
 
     if (addedCount > 0) {
-      saveDataToStorage();
-      // UI im Medikamenten-Tab aktualisieren (Funktion aus deinen anderen Skripten)
-      if (typeof renderMedicationManager === 'function') renderMedicationManager();
-      if (typeof renderTakenMedsList === 'function') renderTakenMedsList();
-      if (typeof loadMedicationsList === 'function') loadMedicationsList(); // Je nachdem wie deine Render-Funktion exakt heißt
-      
-      showToast(`${addedCount} Medikamente importiert!`);
+      // Speichern über deine diary.js-Funktionen
+      if (typeof saveMeds === 'function') {
+        saveMeds(meds);
+      } else {
+        localStorage.setItem('painDiaryMeds', JSON.stringify(meds));
+      }
+
+      // UI über deine diary.js-Funktion aktualisieren
+      if (typeof renderMedList === 'function') {
+        renderMedList();
+      }
+
+      showToast(`✅ ${addedCount} Medikamente importiert!`);
     } else {
-      showToast("Keine lesbaren Medikamentendaten im Code gefunden.", "error");
+      showToast("⚠️ Keine lesbaren Medikamentendaten im Code gefunden.", "error");
     }
 
   } catch (err) {
     console.error("Parser-Fehler:", err);
-    showToast("Fehler beim Verarbeiten des QR-Codes.", "error");
+    showToast("❌ Fehler beim Verarbeiten des QR-Codes.", "error");
   }
 }
 
 // Fallback für einfache QR-Codes (z.B. nur ein Medikamentenname als Freitext)
 function attemptSimpleImport(text) {
-  // Wenn der Text z.B. JSON ist
+  let meds = [];
+  if (typeof getMeds === 'function') {
+    meds = getMeds();
+  } else {
+    meds = JSON.parse(localStorage.getItem('painDiaryMeds') || '[]');
+  }
+
+  // Wenn der Text JSON ist
   if (text.startsWith("{")) {
     try {
       const obj = JSON.parse(text);
       if (obj.name) {
-        if (!appData.medications) appData.medications = [];
-        appData.medications.push({
-          id: 'med_' + Date.now(),
+        meds.push({
+          id: Date.now().toString(36),
           name: obj.name,
           dose: obj.dose || '',
-          form: obj.form || '',
-          morning: obj.morning || 0,
-          noon: obj.noon || 0,
-          evening: obj.evening || 0,
-          night: obj.night || 0,
-          note: "Einfacher JSON-QR-Import"
+          form: obj.form || undefined,
+          schedule: {
+            morning: obj.morning || 0,
+            noon: obj.noon || 0,
+            evening: obj.evening || 0,
+            night: obj.night || 0
+          },
+          time: obj.time || 'Bei Bedarf',
+          note: "JSON-QR-Import"
         });
-        saveDataToStorage();
-        if (typeof renderMedicationManager === 'function') renderMedicationManager();
-        showToast("Medikament importiert!");
+        
+        if (typeof saveMeds === 'function') saveMeds(meds);
+        else localStorage.setItem('painDiaryMeds', JSON.stringify(meds));
+        
+        if (typeof renderMedList === 'function') renderMedList();
+        showToast("✅ Medikament importiert!");
         return;
       }
     } catch(e) {}
   }
 
-  // Ansonsten: Erstelle ein Medikament mit dem gescannten Text als Namen
+  // Ansonsten: Erstelle ein einfaches Medikament mit dem Text als Name
   if (text.trim().length > 0) {
-    if (!appData.medications) appData.medications = [];
-    appData.medications.push({
-      id: 'med_' + Date.now(),
+    meds.push({
+      id: Date.now().toString(36),
       name: text.substring(0, 50).trim(),
       dose: '',
-      form: '',
-      morning: 0, noon: 0, evening: 0, night: 0,
+      form: undefined,
+      schedule: { morning: 0, noon: 0, evening: 0, night: 0 },
+      time: 'Bedarf (Text-Scan)',
       note: "QR-Text-Scan"
     });
-    saveDataToStorage();
-    if (typeof renderMedicationManager === 'function') renderMedicationManager();
-    showToast("Medikamentenname erfasst!");
+    
+    if (typeof saveMeds === 'function') saveMeds(meds);
+    else localStorage.setItem('painDiaryMeds', JSON.stringify(meds));
+    
+    if (typeof renderMedList === 'function') renderMedList();
+    showToast("✅ Medikamentenname erfasst!");
   }
 }
