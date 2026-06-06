@@ -1,0 +1,1799 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a1628" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Schmerztagebuch" />
+  <meta name="description" content="Schmerz & RLS Tagebuch – Tägliche Erfassung von Schmerzintensität und Restless-Legs-Syndrom" />
+  <title>Schmerz & RLS Tagebuch</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+
+
+
+    :root {
+      --bg-deep:    #08111f;
+      --bg-card:    #0f1e35;
+      --bg-card2:   #152640;
+      --bg-input:   #0a1628;
+      --border:     #1e3a5f;
+      --border-lg:  #2a4f7a;
+      --accent-1:   #3b9eff;
+      --accent-2:   #00d4aa;
+      --accent-pain:#ff6b6b;
+      --accent-rls: #a78bfa;
+      --text-1:     #e8f1ff;
+      --text-2:     #8aa8cc;
+      --text-3:     #4a6890;
+      --morning:    #f59e0b;
+      --noon:       #3b9eff;
+      --evening:    #a78bfa;
+      --night:      #4a6890;
+      --radius:     12px;
+      --radius-sm:  8px;
+      --shadow:     0 4px 24px rgba(0,0,0,0.4);
+      --shadow-lg:  0 8px 40px rgba(0,0,0,0.6);
+      --font:       'DM Sans', sans-serif;
+      --mono:       'DM Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: var(--font);
+      background: var(--bg-deep);
+      color: var(--text-1);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── LAYOUT ────────────────────────────────── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+    }
+
+    /* ── HEADER ────────────────────────────────── */
+    .header {
+      background: linear-gradient(135deg, #0d1f3c 0%, #0a1628 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-1);
+      line-height: 1.2;
+    }
+    .header-subtitle {
+      font-size: 11px;
+      color: var(--text-2);
+      font-weight: 400;
+    }
+
+    .header-date {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent-1);
+      background: rgba(59,158,255,0.1);
+      border: 1px solid rgba(59,158,255,0.2);
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    /* ── NAV TABS ───────────────────────────────── */
+    .nav-tabs {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      overflow-x: auto;
+      scrollbar-width: none;
+      position: sticky;
+      top: 61px;
+      z-index: 99;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+
+    .nav-tab {
+      flex: 1;
+      min-width: 80px;
+      padding: 12px 8px;
+      border: none;
+      background: none;
+      color: var(--text-3);
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .nav-tab .tab-icon { font-size: 18px; }
+    .nav-tab:hover { color: var(--text-2); }
+    .nav-tab.active {
+      color: var(--accent-1);
+      border-bottom-color: var(--accent-1);
+      background: rgba(59,158,255,0.05);
+    }
+
+    /* ── MAIN CONTENT ───────────────────────────── */
+    .main-content {
+      flex: 1;
+      padding: 16px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .tab-section { display: none; }
+    .tab-section.active { display: block; }
+
+    /* ── CARDS ───────────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .card-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-1);
+    }
+    .card-subtitle {
+      font-size: 11px;
+      color: var(--text-2);
+    }
+
+    /* ── DATE NAVIGATOR ──────────────────────────── */
+    .date-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+    .date-nav-btn {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .date-nav-btn:hover { background: var(--border); border-color: var(--accent-1); }
+    .date-nav-center { flex: 1; text-align: center; }
+    .date-nav-label {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-1);
+    }
+    .date-nav-sub { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+    .date-input {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-family: var(--font);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .date-input:focus { outline: none; border-color: var(--accent-1); }
+
+    /* ── TIME BLOCKS ──────────────────────────────── */
+    .time-blocks-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 480px) {
+      .time-blocks-grid { grid-template-columns: 1fr; }
+    }
+
+    .time-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      transition: border-color 0.2s;
+    }
+    .time-block:hover { border-color: var(--border-lg); }
+
+    .time-block-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .time-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .time-label { font-size: 13px; font-weight: 600; }
+    .time-clock { font-family: var(--mono); font-size: 11px; color: var(--text-3); margin-left: auto; }
+
+    .time-block[data-time="morning"] .time-dot { background: var(--morning); }
+    .time-block[data-time="noon"]    .time-dot { background: var(--noon); }
+    .time-block[data-time="evening"] .time-dot { background: var(--evening); }
+    .time-block[data-time="night"]   .time-dot { background: var(--night); }
+
+    .time-block[data-time="morning"] .time-label { color: var(--morning); }
+    .time-block[data-time="noon"]    .time-label { color: var(--noon); }
+    .time-block[data-time="evening"] .time-label { color: var(--evening); }
+    .time-block[data-time="night"]   .time-label { color: var(--night); }
+
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .score-label {
+      font-size: 11px;
+      color: var(--text-2);
+      width: 100px;
+      flex-shrink: 0;
+    }
+    .score-label span { display: block; font-size: 10px; color: var(--text-3); }
+
+    .score-select {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      text-align: center;
+      transition: border-color 0.15s;
+    }
+    .score-select:focus { outline: none; }
+    .score-select.pain:focus  { border-color: var(--accent-pain); }
+    .score-select.rls:focus   { border-color: var(--accent-rls); }
+
+    .score-badge {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .score-badge.pain { background: rgba(255,107,107,0.15); color: var(--accent-pain); border: 1px solid rgba(255,107,107,0.3); }
+    .score-badge.rls  { background: rgba(167,139,250,0.15); color: var(--accent-rls);  border: 1px solid rgba(167,139,250,0.3); }
+
+    /* ── NOTES AREA ───────────────────────────────── */
+    .notes-area {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font);
+      font-size: 13px;
+      line-height: 1.6;
+      resize: vertical;
+      min-height: 100px;
+      transition: border-color 0.15s;
+    }
+    .notes-area:focus { outline: none; border-color: var(--accent-2); }
+    .notes-area::placeholder { color: var(--text-3); }
+
+    /* ── SAVE BUTTON ──────────────────────────────── */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-1), #2980e8);
+      border: none;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.2s;
+      letter-spacing: 0.3px;
+    }
+    .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(59,158,255,0.4); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-secondary {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-secondary:hover { border-color: var(--accent-1); color: var(--accent-1); }
+
+    .btn-danger {
+      background: rgba(255,107,107,0.1);
+      border: 1px solid rgba(255,107,107,0.3);
+      color: var(--accent-pain);
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-danger:hover { background: rgba(255,107,107,0.2); }
+
+    /* ── SAVE TOAST ───────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--accent-2);
+      color: #0a1a15;
+      padding: 10px 20px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 1000;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── WEEK OVERVIEW ────────────────────────────── */
+    .week-strip {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+      margin-bottom: 16px;
+    }
+    .week-strip::-webkit-scrollbar { display: none; }
+
+    .week-day-btn {
+      flex: 1;
+      min-width: 42px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      border-radius: var(--radius-sm);
+      padding: 8px 4px;
+      cursor: pointer;
+      font-family: var(--font);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s;
+    }
+    .week-day-btn .wd-name { font-size: 10px; font-weight: 500; }
+    .week-day-btn .wd-date { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+    .week-day-btn .wd-dots { display: flex; gap: 2px; }
+    .week-day-btn .wd-dot  { width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
+    .week-day-btn.has-data .wd-dot.pain { background: var(--accent-pain); }
+    .week-day-btn.has-data .wd-dot.rls  { background: var(--accent-rls); }
+    .week-day-btn.active   { border-color: var(--accent-1); color: var(--accent-1); background: rgba(59,158,255,0.08); }
+    .week-day-btn.today    { border-color: var(--accent-2); }
+
+    /* ── MEDICATION TAB ───────────────────────────── */
+    .med-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .med-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .med-icon {
+      width: 38px;
+      height: 38px;
+      background: rgba(0,212,170,0.1);
+      border: 1px solid rgba(0,212,170,0.3);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .med-info { flex: 1; }
+    .med-name { font-size: 14px; font-weight: 600; color: var(--text-1); }
+    .med-detail { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+    .med-time { font-family: var(--mono); font-size: 11px; color: var(--accent-2); margin-top: 4px; }
+
+    .med-form {
+      background: var(--bg-card2);
+      border: 1px solid var(--border-lg);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 380px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-label { font-size: 11px; font-weight: 500; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .form-input {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font);
+      font-size: 13px;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus { outline: none; border-color: var(--accent-1); }
+    .form-input::placeholder { color: var(--text-3); }
+
+    /* ── CHARTS TAB ───────────────────────────────── */
+    .chart-wrap {
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .chart-toolbar {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .chart-btn {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .chart-btn:hover { color: var(--text-1); }
+    .chart-btn.active {
+      background: rgba(59,158,255,0.15);
+      border-color: var(--accent-1);
+      color: var(--accent-1);
+    }
+    canvas#mainChart { width: 100% !important; max-height: 280px; }
+
+    .legend-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-2);
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* ── STATS STRIP ──────────────────────────────── */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 12px;
+      text-align: center;
+    }
+    .stat-val { font-family: var(--mono); font-size: 24px; font-weight: 500; }
+    .stat-label { font-size: 10px; color: var(--text-2); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* ── EXPORT TAB ───────────────────────────────── */
+    .export-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 400px) {
+      .export-grid { grid-template-columns: 1fr; }
+    }
+
+    .export-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .export-card:hover { border-color: var(--accent-1); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .export-card .ec-icon { font-size: 32px; margin-bottom: 10px; }
+    .export-card .ec-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .export-card .ec-desc { font-size: 11px; color: var(--text-2); }
+
+    .import-zone {
+      background: var(--bg-card2);
+      border: 2px dashed var(--border-lg);
+      border-radius: var(--radius);
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+    .import-zone:hover { border-color: var(--accent-1); background: rgba(59,158,255,0.05); }
+    .import-zone .iz-icon { font-size: 36px; margin-bottom: 10px; }
+    .import-zone .iz-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .import-zone .iz-desc { font-size: 12px; color: var(--text-2); }
+    #fileInput { display: none; }
+
+    /* ── SCROLLBAR ────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── BOTTOM NAV SAFE AREA ─────────────────────── */
+    .bottom-spacer { height: 16px; }
+
+    /* ── RESPONSIVE ───────────────────────────────── */
+    @media (min-width: 640px) {
+      .main-content { padding: 24px; }
+      .time-blocks-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (min-width: 900px) {
+      .time-blocks-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    /* ── EMPTY STATE ──────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-3);
+    }
+    .empty-state .es-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+    .empty-state p { font-size: 13px; line-height: 1.6; }
+
+    /* ── PAIN SCORE COLORS ────────────────────────── */
+    .score-0  { background: rgba(0,212,170,0.2)  !important; color: #00d4aa !important; }
+    .score-1  { background: rgba(0,212,170,0.15) !important; color: #00c49a !important; }
+    .score-2  { background: rgba(130,200,80,0.15)!important; color: #82c850 !important; }
+    .score-3  { background: rgba(180,210,60,0.15)!important; color: #b4d23c !important; }
+    .score-4  { background: rgba(220,200,50,0.15)!important; color: #dcc832 !important; }
+    .score-5  { background: rgba(240,170,40,0.15)!important; color: #f0aa28 !important; }
+    .score-6  { background: rgba(240,140,40,0.15)!important; color: #f08c28 !important; }
+    .score-7  { background: rgba(240,100,50,0.15)!important; color: #f06432 !important; }
+    .score-8  { background: rgba(235,70,60,0.15) !important; color: #eb463c !important; }
+    .score-9  { background: rgba(220,40,60,0.15) !important; color: #dc283c !important; }
+    .score-10 { background: rgba(200,0,50,0.2)   !important; color: #c80032 !important; }
+
+    /* ── MODAL ────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border-lg);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 100%;
+      max-width: 440px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+    .modal-actions button { flex: 1; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .section-title { font-size: 16px; font-weight: 600; color: var(--text-1); }
+
+    .info-banner {
+      background: rgba(59,158,255,0.08);
+      border: 1px solid rgba(59,158,255,0.25);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      color: var(--text-2);
+      line-height: 1.6;
+    }
+    .info-banner.warn {
+      background: rgba(245,158,11,0.08);
+      border-color: rgba(245,158,11,0.35);
+    }
+    .info-banner strong { color: var(--text-1); }
+
+    .sleep-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 400px) { .sleep-grid { grid-template-columns: 1fr; } }
+
+    .rls-table-wrap { overflow-x: auto; margin-top: 12px; }
+    .rls-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+    .rls-table th, .rls-table td {
+      border: 1px solid var(--border);
+      padding: 8px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .rls-table th {
+      background: var(--bg-card2);
+      color: var(--text-2);
+      font-weight: 600;
+    }
+
+    .survey-q {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .survey-q p { font-size: 12px; color: var(--text-1); margin-bottom: 8px; line-height: 1.5; }
+    .survey-scale { display: flex; gap: 6px; flex-wrap: wrap; }
+    .scale-btn {
+      flex: 1;
+      min-width: 36px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      padding: 8px 4px;
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .scale-btn:hover { border-color: var(--accent-rls); color: var(--text-1); }
+    .scale-btn.selected {
+      background: rgba(167,139,250,0.2);
+      border-color: var(--accent-rls);
+      color: var(--accent-rls);
+      font-weight: 600;
+    }
+
+    .sum-box {
+      background: linear-gradient(135deg, rgba(167,139,250,0.15), rgba(59,158,255,0.1));
+      border: 1px solid var(--accent-rls);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+      margin: 14px 0;
+    }
+    .sum-val { font-family: var(--mono); font-size: 32px; font-weight: 600; color: var(--accent-rls); }
+    .sum-label { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+    .severity-badge {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(167,139,250,0.2);
+      color: var(--accent-rls);
+    }
+
+    .corr-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .corr-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+    .corr-item .corr-pair { color: var(--text-2); flex: 1; padding-right: 8px; }
+    .corr-item .corr-val {
+      font-family: var(--mono);
+      font-weight: 600;
+      color: var(--accent-2);
+    }
+    .corr-item .corr-val.weak { color: var(--text-3); }
+    .corr-item .corr-val.moderate { color: var(--accent-1); }
+    .corr-item .corr-val.strong { color: var(--accent-2); }
+
+    .interaction-box {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-top: 16px;
+    }
+    .interaction-item {
+      border-left: 3px solid var(--accent-pain);
+      padding: 8px 0 8px 12px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .interaction-item.severity-high { border-color: #ff6b6b; }
+    .interaction-item.severity-moderate { border-color: #f59e0b; }
+    .interaction-item.severity-low { border-color: var(--accent-2); }
+
+    .hw-disclaimer {
+      font-size: 11px;
+      color: var(--text-3);
+      line-height: 1.6;
+      margin-top: 12px;
+      padding: 10px;
+      background: rgba(255,107,107,0.05);
+      border: 1px solid rgba(255,107,107,0.15);
+      border-radius: var(--radius-sm);
+    }
+
+    .badge-pill {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 100px;
+      background: rgba(167,139,250,0.2);
+      color: var(--accent-rls);
+      margin-left: 6px;
+    }
+    .badge-pill.active { background: rgba(0,212,170,0.2); color: var(--accent-2); }
+
+    .tag-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag-btn {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      padding: 8px 14px;
+      border-radius: 100px;
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tag-btn.on {
+      background: rgba(59,158,255,0.15);
+      border-color: var(--accent-1);
+      color: var(--accent-1);
+    }
+
+    .input-with-voice { display: flex; gap: 8px; align-items: stretch; }
+    .input-with-voice .form-input, .input-with-voice .notes-area { flex: 1; }
+    .voice-btn {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      width: 42px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .voice-btn.listening { border-color: var(--accent-pain); color: var(--accent-pain); animation: pulse 1s infinite; }
+    @keyframes pulse { 50% { opacity: 0.6; } }
+
+    .smart-insight {
+      background: var(--bg-card2);
+      border-left: 3px solid var(--accent-2);
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-1);
+    }
+    .smart-insight.warn { border-left-color: var(--accent-pain); }
+
+    .med-warn-icon {
+      color: var(--accent-pain);
+      font-size: 18px;
+      flex-shrink: 0;
+      cursor: help;
+    }
+
+    .med-intake-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .med-intake-row:last-child { border-bottom: none; }
+    .dose-time-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 4px;
+    }
+    @media (max-width: 400px) {
+      .dose-time-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .dose-time-col { display: flex; flex-direction: column; gap: 5px; align-items: center; }
+    .dose-time-label { font-size: 11px; font-weight: 600; text-align: center; }
+    .dose-time-input { text-align: center; padding: 8px 4px !important; font-family: var(--mono) !important; font-size: 15px !important; font-weight: 600 !important; }
+
+    .med-schedule {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .med-schedule-pill {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-family: var(--mono);
+    }
+    .med-schedule-pill .pill-icon { font-size: 13px; }
+    .med-schedule-pill .pill-val { color: var(--accent-1); font-weight: 600; }
+    .med-intake-block {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .med-intake-block:last-child { border-bottom: none; }
+    .med-intake-name {
+      font-size: 13px;
+      color: var(--text-1);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .med-intake-times {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .med-intake-time-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+      min-width: 58px;
+      text-align: center;
+    }
+    .med-intake-time-btn input { display: none; }
+    .med-intake-time-btn:hover { border-color: var(--accent-1); }
+    .med-intake-time-btn.taken {
+      background: rgba(0,212,170,0.12);
+      border-color: var(--accent-2);
+      color: var(--accent-2);
+    }
+    .med-intake-time-btn.taken span { color: var(--accent-2) !important; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-brand">
+      <div class="header-logo">🩺</div>
+      <div>
+        <div class="header-title">SymptoChron</div>
+        <div class="header-subtitle">Schmerz, RLS, Schlaf & Medikation</div>
+      </div>
+    </div>
+    <div class="header-date" id="headerDate">–</div>
+  </header>
+
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('diary')" data-tab="diary">
+      <span class="tab-icon">📋</span>
+      <span>Tagebuch</span>
+    </button>
+    <button class="nav-tab" onclick="switchTab('rls')" data-tab="rls">
+      <span class="tab-icon">🦵</span>
+      <span>RLS</span>
+    </button>
+    <button class="nav-tab" onclick="switchTab('meds')" data-tab="meds">
+      <span class="tab-icon">💊</span>
+      <span>Medikamente</span>
+    </button>
+    <button class="nav-tab" onclick="switchTab('analysis')" data-tab="analysis">
+      <span class="tab-icon">📊</span>
+      <span>Analyse</span>
+    </button>
+    <button class="nav-tab" onclick="switchTab('charts')" data-tab="charts">
+      <span class="tab-icon">📈</span>
+      <span>Statistik</span>
+    </button>
+    <button class="nav-tab" onclick="switchTab('export')" data-tab="export">
+      <span class="tab-icon">📤</span>
+      <span>Daten</span>
+    </button>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+
+    <!-- ═══════════════ DIARY TAB ═══════════════ -->
+    <section class="tab-section active" id="tab-diary">
+
+      <!-- Week Strip -->
+      <div class="week-strip" id="weekStrip"></div>
+
+      <!-- Date Navigator -->
+      <div class="date-nav">
+        <button class="date-nav-btn" onclick="changeDay(-1)">‹</button>
+        <div class="date-nav-center">
+          <div class="date-nav-label" id="navDateLabel">–</div>
+          <div class="date-nav-sub" id="navDateSub">–</div>
+        </div>
+        <input type="date" class="date-input" id="datePickerInput" onchange="goToDate(this.value)" />
+        <button class="date-nav-btn" onclick="changeDay(1)">›</button>
+      </div>
+
+      <!-- Time Blocks -->
+      <div class="time-blocks-grid" id="timeBlocksGrid">
+        <!-- Injected by JS -->
+      </div>
+
+      <!-- Influence factors -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(245,158,11,0.1)">🏷️</div>
+          <div>
+            <div class="card-title">Einflussfaktoren</div>
+            <div class="card-subtitle">Für Mustererkennung in der Statistik</div>
+          </div>
+        </div>
+        <div class="tag-row" id="influenceTags"></div>
+      </div>
+
+      <!-- Med intake today -->
+      <div class="card" id="medIntakeCard" style="display:none">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(0,212,170,0.1)">💊</div>
+          <div>
+            <div class="card-title">Medikamente heute eingenommen</div>
+            <div class="card-subtitle">Für „Smarte Analyse“ im Statistik-Tab</div>
+          </div>
+        </div>
+        <div id="medIntakeList"></div>
+      </div>
+
+      <!-- Sleep -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(59,158,255,0.1)">😴</div>
+          <div>
+            <div class="card-title">Schlaf (subjektiv)</div>
+            <div class="card-subtitle">Dauer und Qualität der letzten Nacht</div>
+          </div>
+        </div>
+        <div class="sleep-grid">
+          <div class="form-group">
+            <label class="form-label">Schlafdauer (Stunden)</label>
+            <input class="form-input" type="number" id="sleepHours" min="0" max="24" step="0.5" placeholder="z.B. 6.5" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Schlafqualität (1–5)</label>
+            <select class="form-input" id="sleepQuality">
+              <option value="">– nicht angegeben –</option>
+              <option value="1">1 – sehr schlecht</option>
+              <option value="2">2 – schlecht</option>
+              <option value="3">3 – mäßig (häufig wach)</option>
+              <option value="4">4 – gut</option>
+              <option value="5">5 – sehr gut</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Notes -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(0,212,170,0.1)">📝</div>
+          <div>
+            <div class="card-title">Tagesnotizen</div>
+            <div class="card-subtitle">Auslöser, Essen, Maßnahmen (z.B. „heißes Bad")</div>
+          </div>
+        </div>
+        <div class="input-with-voice">
+          <textarea class="notes-area" id="dailyNotes"
+            placeholder="Heute bemerkt: Schlafqualität, Stress, Aktivitäten, Auslöser, hilfreiche Maßnahmen..."
+            rows="4"></textarea>
+          <button type="button" class="voice-btn" title="Spracheingabe" onclick="startVoiceInput('dailyNotes', this)">🎤</button>
+        </div>
+      </div>
+
+      <!-- Save Button -->
+      <button class="btn-primary" onclick="saveEntry()">💾 Eintrag speichern</button>
+      <div class="bottom-spacer"></div>
+    </section>
+
+    <!-- ═══════════════ RLS TAB ═══════════════ -->
+    <section class="tab-section" id="tab-rls">
+
+      <div id="rlsPreVisitBanner" class="info-banner warn" style="display:none"></div>
+      <div id="rlsSurveyBanner" class="info-banner" style="display:none"></div>
+
+      <!-- RLS mode -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(167,139,250,0.15)">⚙️</div>
+          <div>
+            <div class="card-title">RLS-Erfassungsmodus</div>
+            <div class="card-subtitle">Ausführlich vor dem Arzt oder wöchentlicher Kurzfragebogen</div>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label class="form-label">Modus</label>
+            <select class="form-input" id="rlsMode" onchange="saveRlsModeSettings()">
+              <option value="auto">Automatisch: ausführlich vor Termin, sonst wöchentlich</option>
+              <option value="detailed_only">Nur ausführliche Tagesdoku (beste Auswertung)</option>
+              <option value="weekly_only">Nur IRLS-Fragebogen (wöchentlich)</option>
+            </select>
+          </div>
+          <div class="form-group full" id="surveyWeekdayGroup">
+            <label class="form-label">Wochentag für IRLS-Fragebogen</label>
+            <select class="form-input" id="surveyWeekday" onchange="saveRlsModeSettings()">
+              <option value="0">Sonntag</option>
+              <option value="1">Montag</option>
+              <option value="2">Dienstag</option>
+              <option value="3">Mittwoch</option>
+              <option value="4">Donnerstag</option>
+              <option value="5">Freitag</option>
+              <option value="6">Samstag</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Appointment -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(167,139,250,0.15)">📅</div>
+          <div>
+            <div class="card-title">Facharzttermin</div>
+            <div class="card-subtitle">RLS-Facharzt oder Schmerztherapeut</div>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Terminart</label>
+            <select class="form-input" id="apptType">
+              <option value="rls">RLS-Facharzt</option>
+              <option value="pain">Schmerztherapeut</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Datum</label>
+            <input class="form-input" type="date" id="apptDate" />
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Tägliche RLS-Doku vor Termin</label>
+            <select class="form-input" id="apptPreDays">
+              <option value="7">7 Tage vorher</option>
+              <option value="14">14 Tage vorher</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-primary" style="margin-top:12px" onclick="saveAppointment()">Termin speichern</button>
+        <div id="apptList" style="margin-top:14px"></div>
+      </div>
+
+      <!-- Daily RLS Documentation -->
+      <div class="card" id="rlsDailyCard">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(167,139,250,0.15)">📋</div>
+          <div>
+            <div class="card-title">Tägliche RLS-Dokumentation</div>
+            <div class="card-subtitle" id="rlsDailySubtitle">Für den Arztbesuch – heute erfassen</div>
+          </div>
+        </div>
+        <div class="date-nav" style="margin-bottom:12px;padding:10px 12px">
+          <button class="date-nav-btn" onclick="changeRlsDay(-1)">‹</button>
+          <div class="date-nav-center">
+            <div class="date-nav-label" id="rlsDateLabel" style="font-size:13px">–</div>
+          </div>
+          <button class="date-nav-btn" onclick="changeRlsDay(1)">›</button>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Symptom-Stärke (0–10)</label>
+            <select class="form-input" id="rlsSymptom">
+              <option value="">–</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Schlafqualität (1–5)</label>
+            <select class="form-input" id="rlsSleepQuality">
+              <option value="">–</option>
+              <option value="1">1 – sehr schlecht</option>
+              <option value="2">2 – schlecht</option>
+              <option value="3">3 – mäßig</option>
+              <option value="4">4 – gut</option>
+              <option value="5">5 – sehr gut</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Beginn &amp; Dauer</label>
+            <div class="input-with-voice">
+              <input class="form-input" id="rlsBeginDuration" placeholder="z.B. 21:30 Uhr, ca. 2 Std." />
+              <button type="button" class="voice-btn" onclick="startVoiceInput('rlsBeginDuration', this)">🎤</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Einschlafzeit (ca.)</label>
+            <input class="form-input" id="rlsSleepOnset" placeholder="z.B. 23:30" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Durchschlafstörungen</label>
+            <input class="form-input" id="rlsSleepWakeups" placeholder="z.B. 3× wach" />
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Erwachen durch RLS-Symptome</label>
+            <input class="form-input" id="rlsSleepRlsWake" placeholder="z.B. ja, gegen 2 Uhr" />
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Auslöser / Besonderheiten</label>
+            <div class="input-with-voice">
+              <input class="form-input" id="rlsTriggers" placeholder="Koffein, Alkohol, Stress, langes Sitzen…" />
+              <button type="button" class="voice-btn" onclick="startVoiceInput('rlsTriggers', this)">🎤</button>
+            </div>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">
+              <input type="checkbox" id="rlsAugmentation" style="margin-right:8px;accent-color:var(--accent-rls)" />
+              Verdacht auf Augmentation (plötzlich stärkere Beschwerden)
+            </label>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Medikation (Zeit/Dosis)</label>
+            <div class="input-with-voice">
+              <input class="form-input" id="rlsMedication" placeholder="z.B. Pramipexol 0,18mg (20:00)" />
+              <button type="button" class="voice-btn" onclick="startVoiceInput('rlsMedication', this)">🎤</button>
+            </div>
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Linderung durch…</label>
+            <div class="input-with-voice">
+              <input class="form-input" id="rlsRelief" placeholder="z.B. Kalte Wadenwickel, Gehen" />
+              <button type="button" class="voice-btn" onclick="startVoiceInput('rlsRelief', this)">🎤</button>
+            </div>
+          </div>
+        </div>
+        <div class="info-banner" style="margin-top:12px;font-size:11px">
+          <strong>Legende:</strong> Symptom 0 = keine, 10 = unerträglich · Schlaf 1 = sehr schlecht, 5 = durchgeschlafen ·
+          Bei Augmentation bitte Häkchen setzen und in Besonderheiten notieren.
+        </div>
+        <button class="btn-primary" style="margin-top:12px" onclick="saveRlsDaily()">RLS-Eintrag speichern</button>
+        <div class="rls-table-wrap">
+          <table class="rls-table" id="rlsDailyTable">
+            <thead>
+              <tr>
+                <th>Datum</th>
+                <th>Symptom</th>
+                <th>Beginn/Dauer</th>
+                <th>Schlaf</th>
+                <th>Auslöser</th>
+                <th>Medikation</th>
+                <th>Linderung</th>
+              </tr>
+            </thead>
+            <tbody id="rlsDailyTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 6-Day Survey -->
+      <div class="card" id="rlsSurveyCard">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(167,139,250,0.15)">📊</div>
+          <div>
+            <div class="card-title">IRLS-Fragebogen (wöchentlich)</div>
+            <div class="card-subtitle">International RLS Severity Scale · 10 Fragen · Skala 0–4 · max. 40 Punkte</div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--text-2);margin-bottom:14px;line-height:1.6">
+          0 = gar nicht · 1 = leicht · 2 = mäßig · 3 = stark · 4 = sehr stark<br>
+          <span style="color:var(--text-3)">Schweregrad: 1–10 minimal · 11–20 leicht · 21–30 mittelgradig · 31–40 schwer</span>
+        </p>
+        <div id="surveyQuestions"></div>
+        <div class="sum-box">
+          <div class="sum-val" id="surveySum">– / 40</div>
+          <div class="sum-label">Gesamtpunktzahl (max. 40 Punkte)</div>
+          <div class="severity-badge" id="surveySeverity">–</div>
+        </div>
+        <button class="btn-primary" onclick="saveRlsSurvey()">Fragebogen speichern</button>
+        <div id="surveyHistory" style="margin-top:16px"></div>
+      </div>
+
+      <div class="bottom-spacer"></div>
+    </section>
+
+    <!-- ═══════════════ MEDICATIONS TAB ═══════════════ -->
+    <section class="tab-section" id="tab-meds">
+
+      <div id="medInteractionAlert" class="info-banner warn" style="display:none;margin-bottom:14px"></div>
+	
+      <div class="card-header" style="margin-bottom:14px">
+        <div style="flex:1">
+          <div class="section-title">Medikamentenplan</div>
+          <div style="font-size:12px;color:var(--text-2);margin-top:2px">Aktuelle Medikation & Einnahmezeiten</div>
+        </div>
+        <button class="btn-secondary" onclick="openMedModal()">+ Hinzufügen</button>
+      </div>
+	<script src="https://unpkg.com/html5-qrcode"></script>
+
+	<!-- Scanner Bereich -->
+	<div style="margin: 15px; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
+  	  <button id="startScanBtn" style="padding: 10px; background-color: #2ecc71; color: white; border: none; border-radius: 5px; cursor: pointer;">
+        📷 QR-Code scannen (BMP)
+  	  </button>
+  	  <div id="scanner-video-container" style="display: none; margin-top: 10px; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto;"></div>
+  	  <button id="stopScanBtn" style="display: none; margin-top: 10px; padding: 5px; background-color: #e74c3c; color: white; border: none; border-radius: 5px;">
+  	      Stoppen
+ 	   </button>
+	</div>
+
+      <div class="med-list" id="medList">
+        <!-- Injected by JS -->
+      </div>
+
+
+      <div id="medEmpty" class="empty-state" style="display:none">
+        <div class="es-icon">💊</div>
+        <p>Noch keine Medikamente eingetragen.<br>Klicke auf „+ Hinzufügen" um zu beginnen.</p>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(255,107,107,0.1)">⚗️</div>
+          <div>
+            <div class="card-title">Wechselwirkungsprüfung</div>
+            <div class="card-subtitle">RxNav/RxNorm (NLM) – kostenfrei, online</div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--text-2);margin-bottom:12px;line-height:1.6">
+          Zuerst lokale Prüfung (offline) für gängige Schmerz- und RLS-Medikamente, zusätzlich RxNav/RxNorm online (Name oder PZN).
+        </p>
+        <button class="btn-primary" id="btnCheckInteractions" onclick="checkDrugInteractions()">
+          🔍 Wechselwirkungen prüfen
+        </button>
+        <div id="interactionResults" class="interaction-box" style="display:none"></div>
+        <div class="hw-disclaimer">
+          <strong>Hinweis zu Risiken und Nebenwirkungen:</strong> Diese App ersetzt keine ärztliche Beratung,
+          kein Fachpersonal (HW) und keine offizielle Arzneimittelinformation. Die RxNorm-Prüfung basiert auf
+          US-Datenbanken; PZN-Zuordnungen können unvollständig sein. Besprechen Sie Medikation und Wechselwirkungen
+          immer mit Arzt oder Apotheke. Packungsbeilage und Fachinformation beachten.
+        </div>
+      </div>
+
+      <div class="bottom-spacer"></div>
+    </section>
+
+    <!-- ═══════════════ Analysis TAB ═══════════════ -->
+<section class="tab-section" id="tab-analysis">
+  
+  <div id="analysis-warning-banner" class="card" style="display: none; border-color: var(--accent-pain); background: rgba(255,107,107,0.05);">
+    <div class="card-header">
+      <div class="card-icon" style="background: rgba(255,107,107,0.15); color: var(--accent-pain);">⚠️</div>
+      <div class="card-title">System-Warnung</div>
+    </div>
+    <p id="analysis-warning-text" style="font-size: 13px; color: var(--text-1); line-height: 1.5;"></p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background: rgba(0,212,170,0.15); color: var(--accent-2);">🔍</div>
+      <div>
+        <div class="card-title">Muster-Erkennung (Smart Pattern Engine)</div>
+        <div class="card-subtitle">Automatische Auswertung deiner Tagebucheinträge</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 10px;">
+      
+      <div style="background: var(--bg-card2); border: 1px solid var(--border); padding: 14px; border-radius: var(--radius);">
+        <span style="font-size: 18px;">⚡</span>
+        <div style="font-size: 11px; color: var(--text-2); margin-top: 5px;">Schmerzhöhepunkt</div>
+        <div id="profile-pain-time" style="font-size: 14px; font-weight: 600; color: var(--accent-pain); margin-top: 2px;">Wird berechnet...</div>
+        <div id="profile-pain-value" style="font-size: 11px; color: var(--text-3);">--</div>
+      </div>
+
+      <div style="background: var(--bg-card2); border: 1px solid var(--border); padding: 14px; border-radius: var(--radius);">
+        <span style="font-size: 18px;">🌙</span>
+        <div style="font-size: 11px; color: var(--text-2); margin-top: 5px;">Höchste RLS-Intensität</div>
+        <div id="profile-rls-time" style="font-size: 14px; font-weight: 600; color: var(--accent-rls); margin-top: 2px;">Wird berechnet...</div>
+        <div id="profile-rls-value" style="font-size: 11px; color: var(--text-3);">--</div>
+      </div>
+
+      <div style="background: var(--bg-card2); border: 1px solid var(--border); padding: 14px; border-radius: var(--radius);">
+        <span style="font-size: 18px;">📋</span>
+        <div style="font-size: 11px; color: var(--text-2); margin-top: 5px;">Haupt-Einflussfaktor</div>
+        <div id="profile-main-trigger" style="font-size: 14px; font-weight: 600; color: var(--accent-1); margin-top: 2px;">Wird berechnet...</div>
+        <div id="profile-trigger-score" style="font-size: 11px; color: var(--text-3);">--</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background: rgba(59,158,255,0.15); color: var(--accent-1);">📈</div>
+      <div>
+        <div class="card-title">Einflussfaktoren im Vergleich</div>
+        <div class="card-subtitle">Wie stark verändern Faktoren deine Schmerzen?</div>
+      </div>
+    </div>
+    <div id="trigger-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+      </div>
+  </div>
+  <div class="bottom-spacer"></div>
+</section>
+
+    <!-- ═══════════════ CHARTS TAB ═══════════════ -->
+    <section class="tab-section" id="tab-charts">
+
+      <!-- Stats -->
+      <div class="stats-strip" id="statsStrip">
+        <div class="stat-box">
+          <div class="stat-val" id="statAvgPain" style="color:var(--accent-pain)">–</div>
+          <div class="stat-label">Ø Schmerz</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="statAvgRls" style="color:var(--accent-rls)">–</div>
+          <div class="stat-label">Ø RLS</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="statDays" style="color:var(--accent-1)">–</div>
+          <div class="stat-label">Tage erfasst</div>
+        </div>
+      </div>
+
+      <!-- Chart Card -->
+      <div class="chart-wrap">
+        <div class="chart-toolbar">
+          <button class="chart-btn active" onclick="setChartView('week', this)">7 Tage</button>
+          <button class="chart-btn" onclick="setChartView('month', this)">30 Tage</button>
+          <button class="chart-btn" onclick="setChartView('3month', this)">3 Monate</button>
+          <button class="chart-btn" onclick="setChartView('year', this)">Jahr</button>
+        </div>
+        <canvas id="mainChart"></canvas>
+        <div class="legend-row">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--accent-pain)"></div>
+            <span>Schmerz (Ø täglich)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--accent-rls)"></div>
+            <span>RLS (Ø täglich)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Time-of-day chart -->
+      <div class="chart-wrap">
+        <div class="card-header" style="margin-bottom:10px">
+          <div class="card-icon" style="background:rgba(59,158,255,0.1)">🕐</div>
+          <div>
+            <div class="card-title">Tagesverlauf (letzte 7 Tage, Ø)</div>
+            <div class="card-subtitle">Durchschnittliche Intensität nach Tageszeit</div>
+          </div>
+        </div>
+        <canvas id="todChart" style="max-height:220px"></canvas>
+      </div>
+
+      <!-- Smart patterns -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(0,212,170,0.1)">💡</div>
+          <div>
+            <div class="card-title">Psychologische &amp; physische Muster</div>
+            <div class="card-subtitle">Einflussfaktoren vs. Schmerz/RLS (min. 5 Tage mit/ohne Tag)</div>
+          </div>
+        </div>
+        <div id="tagPatternInsights"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(59,158,255,0.1)">💊</div>
+          <div>
+            <div class="card-title">Smarte Analyse (Medikation)</div>
+            <div class="card-subtitle">Vergleich an Einnahme- vs. Nicht-Einnahmetagen</div>
+          </div>
+        </div>
+        <div id="medEffectInsights"></div>
+      </div>
+
+      <!-- Pearson correlations -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(0,212,170,0.1)">🔗</div>
+          <div>
+            <div class="card-title">Pearson-Korrelation</div>
+            <div class="card-subtitle">Statistische Zusammenhänge (min. 5 gemeinsame Tage)</div>
+          </div>
+        </div>
+        <p style="font-size:11px;color:var(--text-3);margin-bottom:12px">
+          r nahe +1: positiver Zusammenhang · r nahe −1: negativ · |r| &lt; 0,3: schwach
+        </p>
+        <div class="corr-grid" id="correlationGrid">
+          <div class="empty-state" style="padding:20px">
+            <p>Noch zu wenig Daten für Korrelationen.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-spacer"></div>
+    </section>
+
+    <!-- ═══════════════ EXPORT TAB ═══════════════ -->
+    
+<section class="tab-section" id="tab-export">
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background: rgba(59,158,255,0.15); color: var(--accent-1);">👤</div>
+      <div>
+        <div class="card-title">Patienten-Stammdaten</div>
+        <div class="card-subtitle">Diese Daten werden lokal auf deinem Gerät gespeichert und für den PDF-Arztbericht verwendet.</div>
+      </div>
+    </div>
+    
+    <div class="form-grid" style="margin-top: 15px;">
+      <div class="form-group">
+        <label class="form-label">Vor- und Nachname</label>
+        <input type="text" class="form-input" id="patientName" placeholder="z.B. Max Mustermann" oninput="savePatientData()" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Geburtsdatum</label>
+        <input type="date" class="form-input" id="patientBday" onchange="savePatientData()" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 15px;">
+    <div class="card-header">
+      <div class="card-icon" style="background: rgba(0,212,170,0.15); color: var(--accent-2);">📤</div>
+      <div>
+        <div class="card-title">Berichte &amp; Datensicherung</div>
+        <div class="card-subtitle">Erstelle Berichte für deinen Facharzt oder sichere deine Daten.</div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+      <button class="btn-primary" onclick="exportPDF()">📄 PDF-Arztbericht erstellen</button>
+      <button class="btn-secondary" onclick="exportJSON()">💾 JSON-Backup erstellen</button>
+      <button class="btn-secondary" onclick="exportCSV()">📊 Daten als CSV sichern</button>
+    </div>
+
+    <div class="import-zone" style="margin-top: 15px;" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" accept=".csv,.json" style="display:none;" onchange="importData(this)" />
+      <div class="iz-icon">📥</div>
+      <p style="font-size:13px;font-weight:600;margin-bottom:4px">CSV oder JSON importieren</p>
+      <p style="font-size:12px;color:var(--text-2)">Klicken oder Datei hierher ziehen · .csv, .json</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 15px;">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(59,158,255,0.1)">ℹ️</div>
+      <div class="card-title">CSV-Format Info</div>
+    </div>
+    <div style="font-size:12px;color:var(--text-2);line-height:1.8;">
+      <div style="font-family:var(--mono);background:var(--bg-input);padding:12px;border-radius:8px;font-size:11px;color:var(--accent-2);overflow-x:auto;margin-bottom:10px;">
+        datum,...,schlafdauer_stunden,schlafqualitaet_1_5,notizen<br>2024-01-15,3,2,4,5,6,7,5,8,6.5,4,Ruhiger Tag...
+      </div>
+      <p>Datum JJJJ-MM-TT · Schmerz/RLS 0–10 · Schlaf optional · JSON-Backup enthält RLS &amp; Medikationsdaten.</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 15px;">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(255,107,107,0.1)">⚠️</div>
+      <div class="card-title">Daten löschen</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
+      <button class="btn-danger" onclick="clearAllData()">🗑 Alle Daten unwiderruflich löschen</button>
+    </div>
+  </div>
+
+  <div class="bottom-spacer"></div>
+</section>
+
+<!-- MEDICATION MODAL -->
+<div class="modal-overlay" id="medModal">
+  <div class="modal">
+    <div class="modal-title">💊 Medikament hinzufügen</div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Medikamentenname *</label>
+        <input class="form-input" id="medName" placeholder="z.B. Pramipexol, Ibuprofen 400" />
+      </div>
+      <div class="form-group full">
+        <label class="form-label">PZN (optional, 8-stellig)</label>
+        <input class="form-input" id="medPzn" placeholder="z.B. 01000000" maxlength="8" inputmode="numeric" />
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Stärke / Dosis</label>
+        <input class="form-input" id="medDose" placeholder="z.B. 400 mg, 0,18 mg, 5 µg/h" />
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Einnahmezeiten &amp; Stückzahl</label>
+        <div class="dose-time-grid">
+          <div class="dose-time-col">
+            <div class="dose-time-label" style="color:var(--morning)">☀️ Morgens</div>
+            <input class="form-input dose-time-input" id="medMorning" type="number" min="0" max="20" step="0.5" placeholder="0" />
+          </div>
+          <div class="dose-time-col">
+            <div class="dose-time-label" style="color:var(--noon)">🌤️ Mittags</div>
+            <input class="form-input dose-time-input" id="medNoon" type="number" min="0" max="20" step="0.5" placeholder="0" />
+          </div>
+          <div class="dose-time-col">
+            <div class="dose-time-label" style="color:var(--evening)">🌆 Abends</div>
+            <input class="form-input dose-time-input" id="medEvening" type="number" min="0" max="20" step="0.5" placeholder="0" />
+          </div>
+          <div class="dose-time-col">
+            <div class="dose-time-label" style="color:var(--night)">🌙 Nachts</div>
+            <input class="form-input dose-time-input" id="medNight" type="number" min="0" max="20" step="0.5" placeholder="0" />
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">Anzahl Tabletten/Kapseln je Tageszeit · 0 = nicht einnehmen</div>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Darreichungsform</label>
+        <select class="form-input" id="medForm">
+          <option value="">– wählen –</option>
+          <option value="Tablette">Tablette</option>
+          <option value="Kapsel">Kapsel</option>
+          <option value="Retardtablette">Retardtablette</option>
+          <option value="Pflaster">Pflaster</option>
+          <option value="Tropfen">Tropfen</option>
+          <option value="Injektion">Injektion</option>
+          <option value="Sonstiges">Sonstiges</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Hinweis / Bemerkung</label>
+        <input class="form-input" id="medNote" placeholder="z.B. Bei Bedarf · nicht nüchtern · neu ab 22.01." />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeMedModal()">Abbrechen</button>
+      <button class="btn-primary" onclick="saveMedication()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+<script src="diary.js"></script>
+<script src="rls.js"></script>
+<script src="charts.js"></script>
+<script src="export.js"></script>
+<script>
+  function savePatientData() {
+    const nameVal = document.getElementById('patientName')?.value || '';
+    const bdayVal = document.getElementById('patientBday')?.value || '';
+    localStorage.setItem('symptochron_patient_name', nameVal);
+    localStorage.setItem('symptochron_patient_bday', bdayVal);
+  }
+  function loadPatientData() {
+    const savedName = localStorage.getItem('symptochron_patient_name') || '';
+    const savedBday = localStorage.getItem('symptochron_patient_bday') || '';
+    const nameField = document.getElementById('patientName');
+    const bdayField = document.getElementById('patientBday');
+    if (nameField) nameField.value = savedName;
+    if (bdayField) bdayField.value = savedBday;
+  }
+  document.addEventListener('DOMContentLoaded', loadPatientData);
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+
+// --- SCANNER LOGIK FÜR SYMPTOCHRON ---
+let html5QrCode = null;
+
+document.getElementById('startScanBtn').addEventListener('click', async function() {
+    const videoContainer = document.getElementById('scanner-video-container');
+    const stopBtn = document.getElementById('stopScanBtn');
+    const startBtn = document.getElementById('startScanBtn');
+
+    // Container anzeigen
+    videoContainer.style.display = 'block';
+    stopBtn.style.display = 'inline-block';
+    startBtn.style.display = 'none';
+
+    // Instanz erstellen, falls noch nicht geschehen
+    if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("scanner-video-container");
+    }
+
+    const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+        // Wenn ein Code gefunden wurde:
+        alert("Code erfolgreich gescannt: " + decodedText);
+        
+        // TODO: Hier kannst du Gemma sagen, was mit dem Text passieren soll.
+        // Zum Beispiel: Automatisch in das Medikamenten-Formular eintragen!
+        
+        stopScanner();
+    };
+
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+    // Kamera starten (Nutzt die Rückkamera "environment")
+    html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+        .catch((err) => {
+            console.error("Kamera-Fehler:", err);
+            alert("Kamera konnte nicht gestartet werden. Hast du die Erlaubnis erteilt?");
+            stopScanner();
+        });
+});
+
+document.getElementById('stopScanBtn').addEventListener('click', stopScanner);
+
+function stopScanner() {
+    if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().then(() => {
+            resetScannerUI();
+        }).catch((err) => console.error("Fehler beim Stoppen:", err));
+    } else {
+        resetScannerUI();
+    }
+}
+
+function resetScannerUI() {
+    document.getElementById('scanner-video-container').style.display = 'none';
+    document.getElementById('stopScanBtn').style.display = 'none';
+    document.getElementById('startScanBtn').style.display = 'inline-block';
+}
+
+</script>
+</body>
+</html>
