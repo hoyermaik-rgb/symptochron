@@ -1765,7 +1765,15 @@ document.getElementById('startScanBtn').addEventListener('click', async function
         stopScanner();
     };
 
-    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+    // Tausche die alte 'config'-Zeile gegen diese aus:
+const config = { 
+    fps: 15, // Schneller scannen
+    qrbox: { width: 280, height: 280 }, // Etwas größere Scan-Box
+    formatsToSupport: [ 
+        Html5QrcodeSupportedFormats.QR_CODE, 
+        Html5QrcodeSupportedFormats.DATA_MATRIX // WICHTIG FÜR MEDIKATIONSPLÄNE!
+    ]
+};
 
     // Kamera starten (Nutzt die Rückkamera "environment")
     html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
