@@ -18,6 +18,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
+
+
+
     :root {
       --bg-deep:    #08111f;
       --bg-card:    #0f1e35;
@@ -932,6 +935,77 @@
       font-size: 13px;
     }
     .med-intake-row:last-child { border-bottom: none; }
+    .dose-time-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 4px;
+    }
+    @media (max-width: 400px) {
+      .dose-time-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .dose-time-col { display: flex; flex-direction: column; gap: 5px; align-items: center; }
+    .dose-time-label { font-size: 11px; font-weight: 600; text-align: center; }
+    .dose-time-input { text-align: center; padding: 8px 4px !important; font-family: var(--mono) !important; font-size: 15px !important; font-weight: 600 !important; }
+
+    .med-schedule {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .med-schedule-pill {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-family: var(--mono);
+    }
+    .med-schedule-pill .pill-icon { font-size: 13px; }
+    .med-schedule-pill .pill-val { color: var(--accent-1); font-weight: 600; }
+    .med-intake-block {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .med-intake-block:last-child { border-bottom: none; }
+    .med-intake-name {
+      font-size: 13px;
+      color: var(--text-1);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .med-intake-times {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .med-intake-time-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+      min-width: 58px;
+      text-align: center;
+    }
+    .med-intake-time-btn input { display: none; }
+    .med-intake-time-btn:hover { border-color: var(--accent-1); }
+    .med-intake-time-btn.taken {
+      background: rgba(0,212,170,0.12);
+      border-color: var(--accent-2);
+      color: var(--accent-2);
+    }
+    .med-intake-time-btn.taken span { color: var(--accent-2) !important; }
   </style>
 </head>
 <body>
@@ -942,14 +1016,13 @@
     <div class="header-brand">
       <div class="header-logo">🩺</div>
       <div>
-        <div class="header-title">Schmerztagebuch</div>
+        <div class="header-title">SymptoChron</div>
         <div class="header-subtitle">Schmerz, RLS, Schlaf & Medikation</div>
       </div>
     </div>
     <div class="header-date" id="headerDate">–</div>
   </header>
 
-  <!-- NAV TABS -->
   <nav class="nav-tabs">
     <button class="nav-tab active" onclick="switchTab('diary')" data-tab="diary">
       <span class="tab-icon">📋</span>
@@ -962,6 +1035,10 @@
     <button class="nav-tab" onclick="switchTab('meds')" data-tab="meds">
       <span class="tab-icon">💊</span>
       <span>Medikamente</span>
+    </button>
+    <button class="nav-tab" onclick="switchTab('analysis')" data-tab="analysis">
+      <span class="tab-icon">📊</span>
+      <span>Analyse</span>
     </button>
     <button class="nav-tab" onclick="switchTab('charts')" data-tab="charts">
       <span class="tab-icon">📈</span>
@@ -1093,11 +1170,11 @@
             <select class="form-input" id="rlsMode" onchange="saveRlsModeSettings()">
               <option value="auto">Automatisch: ausführlich vor Termin, sonst wöchentlich</option>
               <option value="detailed_only">Nur ausführliche Tagesdoku (beste Auswertung)</option>
-              <option value="weekly_only">Nur RLS-6 Kurzfragebogen (wöchentlich)</option>
+              <option value="weekly_only">Nur IRLS-Fragebogen (wöchentlich)</option>
             </select>
           </div>
           <div class="form-group full" id="surveyWeekdayGroup">
-            <label class="form-label">Wochentag für RLS-6 Fragebogen</label>
+            <label class="form-label">Wochentag für IRLS-Fragebogen</label>
             <select class="form-input" id="surveyWeekday" onchange="saveRlsModeSettings()">
               <option value="0">Sonntag</option>
               <option value="1">Montag</option>
@@ -1253,17 +1330,18 @@
         <div class="card-header">
           <div class="card-icon" style="background:rgba(167,139,250,0.15)">📊</div>
           <div>
-            <div class="card-title">RLS-6 Fragebogen (wöchentlich)</div>
-            <div class="card-subtitle">Kurzform · letzte 7 Tage · Skala 0–4</div>
+            <div class="card-title">IRLS-Fragebogen (wöchentlich)</div>
+            <div class="card-subtitle">International RLS Severity Scale · 10 Fragen · Skala 0–4 · max. 40 Punkte</div>
           </div>
         </div>
         <p style="font-size:12px;color:var(--text-2);margin-bottom:14px;line-height:1.6">
-          0 = gar nicht · 1 = leicht · 2 = mäßig · 3 = stark · 4 = sehr stark
+          0 = gar nicht · 1 = leicht · 2 = mäßig · 3 = stark · 4 = sehr stark<br>
+          <span style="color:var(--text-3)">Schweregrad: 1–10 minimal · 11–20 leicht · 21–30 mittelgradig · 31–40 schwer</span>
         </p>
         <div id="surveyQuestions"></div>
         <div class="sum-box">
-          <div class="sum-val" id="surveySum">– / 24</div>
-          <div class="sum-label">Summe (max. 24 Punkte)</div>
+          <div class="sum-val" id="surveySum">– / 40</div>
+          <div class="sum-label">Gesamtpunktzahl (max. 40 Punkte)</div>
           <div class="severity-badge" id="surveySeverity">–</div>
         </div>
         <button class="btn-primary" onclick="saveRlsSurvey()">Fragebogen speichern</button>
@@ -1283,6 +1361,7 @@
           <div class="section-title">Medikamentenplan</div>
           <div style="font-size:12px;color:var(--text-2);margin-top:2px">Aktuelle Medikation & Einnahmezeiten</div>
         </div>
+        <button class="btn-secondary" onclick="openScannerModal()" style="margin-right: 8px; background: var(--accent-1); color: #000;">📷 Plan scannen</button>
         <button class="btn-secondary" onclick="openMedModal()">+ Hinzufügen</button>
       </div>
 
@@ -1320,6 +1399,66 @@
 
       <div class="bottom-spacer"></div>
     </section>
+
+    <!-- ═══════════════ Analysis TAB ═══════════════ -->
+<section class="tab-section" id="tab-analysis">
+  
+  <div id="analysis-warning-banner" class="card" style="display: none; border-color: var(--accent-pain); background: rgba(255,107,107,0.05);">
+    <div class="card-header">
+      <div class="card-icon" style="background: rgba(255,107,107,0.15); color: var(--accent-pain);">⚠️</div>
+      <div class="card-title">System-Warnung</div>
+    </div>
+    <p id="analysis-warning-text" style="font-size: 13px; color: var(--text-1); line-height: 1.5;"></p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background: rgba(0,212,170,0.15); color: var(--accent-2);">🔍</div>
+      <div>
+        <div class="card-title">Muster-Erkennung (Smart Pattern Engine)</div>
+        <div class="card-subtitle">Automatische Auswertung deiner Tagebucheinträge</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 10px;">
+      
+      <div style="background: var(--bg-card2); border: 1px solid var(--border); padding: 14px; border-radius: var(--radius);">
+        <span style="font-size: 18px;">⚡</span>
+        <div style="font-size: 11px; color: var(--text-2); margin-top: 5px;">Schmerzhöhepunkt</div>
+        <div id="profile-pain-time" style="font-size: 14px; font-weight: 600; color: var(--accent-pain); margin-top: 2px;">Wird berechnet...</div>
+        <div id="profile-pain-value" style="font-size: 11px; color: var(--text-3);">--</div>
+      </div>
+
+      <div style="background: var(--bg-card2); border: 1px solid var(--border); padding: 14px; border-radius: var(--radius);">
+        <span style="font-size: 18px;">🌙</span>
+        <div style="font-size: 11px; color: var(--text-2); margin-top: 5px;">Höchste RLS-Intensität</div>
+        <div id="profile-rls-time" style="font-size: 14px; font-weight: 600; color: var(--accent-rls); margin-top: 2px;">Wird berechnet...</div>
+        <div id="profile-rls-value" style="font-size: 11px; color: var(--text-3);">--</div>
+      </div>
+
+      <div style="background: var(--bg-card2); border: 1px solid var(--border); padding: 14px; border-radius: var(--radius);">
+        <span style="font-size: 18px;">📋</span>
+        <div style="font-size: 11px; color: var(--text-2); margin-top: 5px;">Haupt-Einflussfaktor</div>
+        <div id="profile-main-trigger" style="font-size: 14px; font-weight: 600; color: var(--accent-1); margin-top: 2px;">Wird berechnet...</div>
+        <div id="profile-trigger-score" style="font-size: 11px; color: var(--text-3);">--</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background: rgba(59,158,255,0.15); color: var(--accent-1);">📈</div>
+      <div>
+        <div class="card-title">Einflussfaktoren im Vergleich</div>
+        <div class="card-subtitle">Wie stark verändern Faktoren deine Schmerzen?</div>
+      </div>
+    </div>
+    <div id="trigger-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+      </div>
+  </div>
+  <div class="bottom-spacer"></div>
+</section>
 
     <!-- ═══════════════ CHARTS TAB ═══════════════ -->
     <section class="tab-section" id="tab-charts">
@@ -1419,90 +1558,150 @@
     </section>
 
     <!-- ═══════════════ EXPORT TAB ═══════════════ -->
-    <section class="tab-section" id="tab-export">
+    
+<section class="tab-section" id="tab-export">
 
-      <div class="section-header">
-        <div class="section-title">Daten exportieren</div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background: rgba(59,158,255,0.15); color: var(--accent-1);">👤</div>
+      <div>
+        <div class="card-title">Patienten-Stammdaten</div>
+        <div class="card-subtitle">Diese Daten werden lokal auf deinem Gerät gespeichert und für den PDF-Arztbericht verwendet.</div>
       </div>
-
-      <div class="export-grid">
-        <div class="export-card" onclick="exportCSV()">
-          <div class="ec-icon">📊</div>
-          <div class="ec-title">CSV Export</div>
-          <div class="ec-desc">Alle Einträge als Tabelle (Excel-kompatibel)</div>
-        </div>
-        <div class="export-card" onclick="exportPDF()">
-          <div class="ec-icon">📄</div>
-          <div class="ec-title">PDF Bericht</div>
-          <div class="ec-desc">Arztbericht mit Verlauf & Notizen</div>
-        </div>
+    </div>
+    
+    <div class="form-grid" style="margin-top: 15px;">
+      <div class="form-group">
+        <label class="form-label">Vor- und Nachname</label>
+        <input type="text" class="form-input" id="patientName" placeholder="z.B. Max Mustermann" oninput="savePatientData()" />
       </div>
-
-      <div class="section-header">
-        <div class="section-title">Daten importieren</div>
+      <div class="form-group">
+        <label class="form-label">Geburtsdatum</label>
+        <input type="date" class="form-input" id="patientBday" onchange="savePatientData()" />
       </div>
+    </div>
+  </div>
 
-      <div class="import-zone" onclick="document.getElementById('fileInput').click()">
-        <input type="file" id="fileInput" accept=".csv,.json" onchange="importData(this)" />
-        <div class="iz-icon">📥</div>
-        <div class="iz-title">CSV oder JSON importieren</div>
-        <div class="iz-desc">Klicken oder Datei hierher ziehen<br>Unterstützt: .csv, .json</div>
+  <div class="card" style="margin-top: 15px;">
+    <div class="card-header">
+      <div class="card-icon" style="background: rgba(0,212,170,0.15); color: var(--accent-2);">📤</div>
+      <div>
+        <div class="card-title">Berichte &amp; Datensicherung</div>
+        <div class="card-subtitle">Erstelle Berichte für deinen Facharzt oder sichere deine Daten.</div>
       </div>
+    </div>
 
-      <!-- CSV Format Info -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-icon" style="background:rgba(59,158,255,0.1)">ℹ️</div>
-          <div class="card-title">CSV-Format</div>
-        </div>
-        <div style="font-size:12px;color:var(--text-2);line-height:1.8;">
-          <div style="font-family:var(--mono);background:var(--bg-input);padding:12px;border-radius:8px;font-size:11px;color:var(--accent-2);overflow-x:auto;margin-bottom:10px;">datum,...,schlafdauer_stunden,schlafqualitaet_1_5,notizen<br>2024-01-15,3,2,4,5,6,7,5,8,6.5,4,Ruhiger Tag...</div>
-          <p>Datum JJJJ-MM-TT · Schmerz/RLS 0–10 · Schlaf optional · JSON-Backup enthält RLS &amp; Termine</p>
-        </div>
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+      <button class="btn-primary" onclick="exportPDF()">📄 PDF-Arztbericht erstellen</button>
+      <button class="btn-secondary" onclick="exportJSON()">💾 JSON-Backup erstellen</button>
+      <button class="btn-secondary" onclick="exportCSV()">📊 Daten als CSV sichern</button>
+    </div>
+
+    <div class="import-zone" style="margin-top: 15px;" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" accept=".csv,.json" style="display:none;" onchange="importData(this)" />
+      <div class="iz-icon">📥</div>
+      <p style="font-size:13px;font-weight:600;margin-bottom:4px">CSV oder JSON importieren</p>
+      <p style="font-size:12px;color:var(--text-2)">Klicken oder Datei hierher ziehen · .csv, .json</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 15px;">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(59,158,255,0.1)">ℹ️</div>
+      <div class="card-title">CSV-Format Info</div>
+    </div>
+    <div style="font-size:12px;color:var(--text-2);line-height:1.8;">
+      <div style="font-family:var(--mono);background:var(--bg-input);padding:12px;border-radius:8px;font-size:11px;color:var(--accent-2);overflow-x:auto;margin-bottom:10px;">
+        datum,...,schlafdauer_stunden,schlafqualitaet_1_5,notizen<br>2024-01-15,3,2,4,5,6,7,5,8,6.5,4,Ruhiger Tag...
       </div>
+      <p>Datum JJJJ-MM-TT · Schmerz/RLS 0–10 · Schlaf optional · JSON-Backup enthält RLS &amp; Medikationsdaten.</p>
+    </div>
+  </div>
 
-      <!-- Data Management -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-icon" style="background:rgba(255,107,107,0.1)">⚠️</div>
-          <div class="card-title">Datenverwaltung</div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <button class="btn-secondary" onclick="exportJSON()">💾 JSON-Backup erstellen</button>
-          <button class="btn-danger" onclick="clearAllData()">🗑 Alle Daten löschen</button>
-        </div>
-      </div>
+  <div class="card" style="margin-top: 15px;">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(255,107,107,0.1)">⚠️</div>
+      <div class="card-title">Daten löschen</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
+      <button class="btn-danger" onclick="clearAllData()">🗑 Alle Daten unwiderruflich löschen</button>
+    </div>
+  </div>
 
-      <div class="bottom-spacer"></div>
-    </section>
-
-  </main>
-</div>
+  <div class="bottom-spacer"></div>
+</section>
 
 <!-- MEDICATION MODAL -->
+<div class="modal-overlay" id="scannerModal" style="display: none; justify-content: center; align-items: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1100;">
+  <div class="modal" style="background: var(--bg-card); max-width: 400px; width: 90%; padding: 20px; border-radius: var(--radius); text-align: center;">
+    <div class="modal-title" style="margin-bottom: 15px;">📷 Bundesmedikationsplan scannen</div>
+    
+    <div id="scanner-video-container" style="width: 100%; max-width: 300px; margin: 0 auto 15px auto; border-radius: 8px; overflow: hidden; background: #000;"></div>
+    
+    <p style="font-size: 12px; color: var(--text-2); margin-bottom: 15px; line-height: 1.5;">
+      Halte den 2D-Barcode (DataMatrix/QR) deines ausgedruckten Medikationsplans vor die Kamera.
+    </p>
+    
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeScannerModal()" style="width: 100%;">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="medModal">
   <div class="modal">
     <div class="modal-title">💊 Medikament hinzufügen</div>
     <div class="form-grid">
       <div class="form-group full">
-        <label class="form-label">Medikamentenname</label>
+        <label class="form-label">Medikamentenname *</label>
         <input class="form-input" id="medName" placeholder="z.B. Pramipexol, Ibuprofen 400" />
       </div>
       <div class="form-group full">
         <label class="form-label">PZN (optional, 8-stellig)</label>
         <input class="form-input" id="medPzn" placeholder="z.B. 01000000" maxlength="8" inputmode="numeric" />
       </div>
-      <div class="form-group">
-        <label class="form-label">Dosis</label>
-        <input class="form-input" id="medDose" placeholder="z.B. 400 mg" />
+      <div class="form-group full">
+        <label class="form-label">Stärke / Dosis</label>
+        <input class="form-input" id="medDose" placeholder="z.B. 400 mg, 0,18 mg, 5 µg/h" />
       </div>
-      <div class="form-group">
-        <label class="form-label">Einnahmezeit</label>
-        <input class="form-input" type="text" id="medTime" placeholder="z.B. 08:00, Abends" />
+      <div class="form-group full">
+        <label class="form-label">Einnahmezeiten &amp; Stückzahl</label>
+        <div class="dose-time-grid">
+          <div class="dose-time-col">
+            <div class="dose-time-label" style="color:var(--morning)">☀️ Morgens</div>
+            <input class="form-input dose-time-input" id="medMorning" type="number" min="0" max="20" step="0.5" placeholder="0" />
+          </div>
+          <div class="dose-time-col">
+            <div class="dose-time-label" style="color:var(--noon)">🌤️ Mittags</div>
+            <input class="form-input dose-time-input" id="medNoon" type="number" min="0" max="20" step="0.5" placeholder="0" />
+          </div>
+          <div class="dose-time-col">
+            <div class="dose-time-label" style="color:var(--evening)">🌆 Abends</div>
+            <input class="form-input dose-time-input" id="medEvening" type="number" min="0" max="20" step="0.5" placeholder="0" />
+          </div>
+          <div class="dose-time-col">
+            <div class="dose-time-label" style="color:var(--night)">🌙 Nachts</div>
+            <input class="form-input dose-time-input" id="medNight" type="number" min="0" max="20" step="0.5" placeholder="0" />
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:6px">Anzahl Tabletten/Kapseln je Tageszeit · 0 = nicht einnehmen</div>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Darreichungsform</label>
+        <select class="form-input" id="medForm">
+          <option value="">– wählen –</option>
+          <option value="Tablette">Tablette</option>
+          <option value="Kapsel">Kapsel</option>
+          <option value="Retardtablette">Retardtablette</option>
+          <option value="Pflaster">Pflaster</option>
+          <option value="Tropfen">Tropfen</option>
+          <option value="Injektion">Injektion</option>
+          <option value="Sonstiges">Sonstiges</option>
+        </select>
       </div>
       <div class="form-group full">
         <label class="form-label">Hinweis / Bemerkung</label>
-        <input class="form-input" id="medNote" placeholder="z.B. Bei Bedarf, nicht nüchtern" />
+        <input class="form-input" id="medNote" placeholder="z.B. Bei Bedarf · nicht nüchtern · neu ab 22.01." />
       </div>
     </div>
     <div class="modal-actions">
@@ -1512,11 +1711,45 @@
   </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<script src="app.js"></script>
+<script src="diary.js"></script>
+<script src="rls.js"></script>
+<script src="charts.js"></script>
+<script src="export.js"></script>
+<script src="scanner.js"></script>
+
+</body>
+</html>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script src="app.js"></script>
+<script src="diary.js"></script>
+<script src="rls.js"></script>
+<script src="charts.js"></script>
+<script src="export.js"></script>
+<script src="scanner.js"></script>
 <script>
+  function savePatientData() {
+    const nameVal = document.getElementById('patientName')?.value || '';
+    const bdayVal = document.getElementById('patientBday')?.value || '';
+    localStorage.setItem('symptochron_patient_name', nameVal);
+    localStorage.setItem('symptochron_patient_bday', bdayVal);
+  }
+  function loadPatientData() {
+    const savedName = localStorage.getItem('symptochron_patient_name') || '';
+    const savedBday = localStorage.getItem('symptochron_patient_bday') || '';
+    const nameField = document.getElementById('patientName');
+    const bdayField = document.getElementById('patientBday');
+    if (nameField) nameField.value = savedName;
+    if (bdayField) bdayField.value = savedBday;
+  }
+  document.addEventListener('DOMContentLoaded', loadPatientData);
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js').catch(() => {});
