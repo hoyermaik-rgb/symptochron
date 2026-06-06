@@ -1366,15 +1366,21 @@
 	<script src="https://unpkg.com/html5-qrcode"></script>
 
 	<!-- Scanner Bereich -->
-	<div style="margin: 15px; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
-  	  <button id="startScanBtn" style="padding: 10px; background-color: #2ecc71; color: white; border: none; border-radius: 5px; cursor: pointer;">
+<!-- Scanner Bereich (Nur noch einmal vorhanden!) -->
+<div style="margin: 15px; padding: 15px; border: 1px solid var(--border) || #ccc; border-radius: 8px; text-align: center;">
+    <button id="startScanBtn" style="padding: 10px 20px; background-color: #2ecc71; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
         📷 QR-Code scannen (BMP)
-  	  </button>
-  	  <div id="scanner-video-container" style="display: none; margin-top: 10px; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto;"></div>
-  	  <button id="stopScanBtn" style="display: none; margin-top: 10px; padding: 5px; background-color: #e74c3c; color: white; border: none; border-radius: 5px;">
-  	      Stoppen
- 	   </button>
-	</div>
+    </button>
+    
+    <!-- Der Container ist jetzt komplett flexibel, damit die Bibliothek die Kontrolle hat -->
+    <div id="scanner-video-container" style="display: none; margin: 15px auto 0 auto; width: 100%; max-width: 450px;"></div>
+    
+    <button id="stopScanBtn" style="display: none; margin-top: 15px; padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+        Stoppen
+    </button>
+
+</div>
+
 
       <div class="med-list" id="medList">
         <!-- Injected by JS -->
@@ -1835,7 +1841,7 @@ function parseMedicationPlan(text) {
       }
     }
 
-    // 2. VERSUCH: PZN Erkennung (Wenn es nur eine Zahlenfolge ist)
+// 2. VERSUCH: PZN Erkennung (Wenn es nur eine Zahlenfolge ist)
     const isPZN = /^\d{7,10}$/.test(text.trim());
     if (isPZN) {
       const pznClean = text.trim();
@@ -1863,7 +1869,7 @@ function parseMedicationPlan(text) {
           if (typeof saveMeds === 'function') saveMeds(meds);
           if (typeof renderMedList === 'function') renderMedList();
           if (typeof showToast === 'function') showToast("Medikament erfolgreich geladen!");
-        })
+        }) // <-- HIER: Semikolon entfernt, damit .catch() angehängt werden kann!
         .catch(err => {
           console.error("API Fehler:", err);
           // Fallback, falls Internet weg ist oder API streikt
@@ -1879,6 +1885,38 @@ function parseMedicationPlan(text) {
           if (typeof saveMeds === 'function') saveMeds(meds);
           if (typeof renderMedList === 'function') renderMedList();
         });
+
+      return; // Beendet den BMP/PZN-Zweig sauber
+    }
+
+    // 3. VERSUCH: JSON oder einfacher Text (Falls es weder BMP noch reine PZN ist)
+    else {
+      try {
+        const obj = JSON.parse(text);
+        if (obj.name) {
+          meds.push({ id: "med_" + Date.now(), ...obj });
+        } else {
+          meds.push({ id: "med_" + Date.now(), name: text.substring(0, 30), note: "Scan-Import" });
+        }
+      } catch(e) {
+        meds.push({ id: "med_" + Date.now(), name: text.substring(0, 30), note: "Scan-Import" });
+      }
+      
+      if (typeof saveMeds === 'function') saveMeds(meds);
+      if (typeof renderMedList === 'function') renderMedList();
+    }
+
+  } catch (err) {
+    console.error("Parsing Error:", err);
+  }
+} // <-- Schließt die Funktion parseMedicationPlan
+
+// Event Listener für die Buttons aktivieren
+const containerElem = document.getElementById("scanner-video-container");
+containerElem.style.display = "block";
+containerElem.style.height = "auto";
+document.getElementById("startScanBtn").addEventListener("click", startQRScanner);
+document.getElementById("stopScanBtn").addEventListener("click", stopQRScanner);
 </script>
 </body>
 </html>
