@@ -151,7 +151,6 @@ function saveEntry() {
   }
 
   saveStore(store);
-  if (store[currentDate] && typeof markDataEnteredToday === 'function') markDataEnteredToday();
   buildWeekStrip();
   showToast('✅ Eintrag gespeichert');
 }
@@ -460,3 +459,4 @@ function deleteMed(i) {
   renderMedList();
   showToast('🗑 Medikament entfernt');
 }
+

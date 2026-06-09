@@ -105,42 +105,6 @@ function renderCorrelations() {
     },
   ];
 
-  if (typeof getBloodPressureDailyAverages === 'function') {
-    const bpDaily = getBloodPressureDailyAverages();
-    pairs.push({
-      label: 'Ø Schmerz ↔ systolischer Blutdruck',
-      get: () => {
-        const xs = [], ys = [];
-        Object.keys(bpDaily).sort().forEach(d => {
-          const e = store[d];
-          const p = e ? dailyAvgPain(e) : null;
-          const sys = bpDaily[d].systolic;
-          if (p !== null && sys !== null && !isNaN(p) && !isNaN(sys)) {
-            xs.push(p);
-            ys.push(sys);
-          }
-        });
-        return { xs, ys, n: xs.length };
-      },
-    });
-    pairs.push({
-      label: 'Ø Schmerz ↔ diastolischer Blutdruck',
-      get: () => {
-        const xs = [], ys = [];
-        Object.keys(bpDaily).sort().forEach(d => {
-          const e = store[d];
-          const p = e ? dailyAvgPain(e) : null;
-          const dia = bpDaily[d].diastolic;
-          if (p !== null && dia !== null && !isNaN(p) && !isNaN(dia)) {
-            xs.push(p);
-            ys.push(dia);
-          }
-        });
-        return { xs, ys, n: xs.length };
-      },
-    });
-  }
-
   const results = pairs.map(p => {
     const { xs, ys, n } = p.get();
     const r = pearsonCorrelation(xs, ys);
@@ -365,8 +329,6 @@ function renderAnalysisTab() {
   triggerList.innerHTML = rows.length
     ? rows.join('')
     : '<div class="empty-state" style="padding:16px"><p>Nutze die Einflussfaktoren im Tagebuch – nach min. 3 Tagen mit/ohne Tag erscheinen Vergleiche.</p></div>';
-
-  if (typeof renderBloodPressureAnalysis === 'function') renderBloodPressureAnalysis();
 }
 
 // ── Charts ───────────────────────────────────────
@@ -577,3 +539,4 @@ function renderCharts() {
   renderTagPatternInsights();
   renderMedEffectInsights();
 }
+

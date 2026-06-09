@@ -38,9 +38,8 @@ function exportJSON() {
     settings: getSettings(),
     rlsDaily: getRlsDaily(),
     rlsSurveys: getRlsSurveys(),
-    bloodPressure: typeof getBloodPressureEntries === 'function' ? getBloodPressureEntries() : [],
     exportedAt: new Date().toISOString(),
-    version: 3,
+    version: 2,
   };
   downloadFile(JSON.stringify(data, null, 2), `schmerztagebuch_backup_${todayStr()}.json`, 'application/json');
   showToast('✅ JSON-Backup erstellt');
@@ -244,11 +243,6 @@ function importData(input) {
           Object.assign(rs, data.rlsSurveys);
           saveRlsSurveys(rs);
         }
-        if (data.bloodPressure && typeof getBloodPressureEntries === 'function' && typeof saveBloodPressureEntries === 'function') {
-          const bp = getBloodPressureEntries();
-          bp.push(...data.bloodPressure);
-          saveBloodPressureEntries(bp);
-        }
         buildWeekStrip();
         renderMedList();
         initRlsTab();
@@ -346,10 +340,10 @@ function clearAllData() {
   localStorage.removeItem('painDiarySettings');
   localStorage.removeItem('painDiaryRlsDaily');
   localStorage.removeItem('painDiaryRlsSurvey');
-  localStorage.removeItem('painDiaryBloodPressure');
   buildWeekStrip();
   loadCurrentEntry();
   renderMedList();
   initRlsTab();
   showToast('🗑 Alle Daten gelöscht');
 }
+
