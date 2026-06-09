@@ -38,14 +38,15 @@ function exportJSON() {
     settings: getSettings(),
     rlsDaily: getRlsDaily(),
     rlsSurveys: getRlsSurveys(),
+    bloodPressure: typeof getBloodPressureEntries === 'function' ? getBloodPressureEntries() : [],
     exportedAt: new Date().toISOString(),
-    version: 2,
+    version: 3,
   };
   downloadFile(JSON.stringify(data, null, 2), `schmerztagebuch_backup_${todayStr()}.json`, 'application/json');
   showToast('✅ JSON-Backup erstellt');
 }
 
-// ── Export PDF ───────────────────────────────────
+// ── Export PDF mit Deckblatt & Farbskala ───────────────────────────
 function exportPDF() {
   if (!window.jspdf) { showToast('⏳ PDF-Bibliothek lädt...'); return; }
   const { jsPDF } = window.jspdf;
@@ -55,24 +56,260 @@ function exportPDF() {
   const dates = Object.keys(store).sort();
   const meds  = getMeds();
 
-  let y = 20;
   const lm = 20, rm = 190;
+  
+  // Stammdaten aus der App holen
+  const pName = document.getElementById('patientName')?.value || 'Nicht angegeben';
+  const pBirth = document.getElementById('patientBirth')?.value || 'Nicht angegeben';
+  const pInsurance = document.getElementById('patientInsurance')?.value || 'Nicht angegeben';
 
-  // Header
-  doc.setFillColor(10, 22, 40);
-  doc.rect(0, 0, 210, 35, 'F');
-  doc.setTextColor(232, 241, 255);
-  doc.setFontSize(18);
+  // ==========================================
+  // SEITE 1: DAS DECKBLATT
+  // ==========================================
+  
+  // Header-Balken oben links/rechts
+  doc.setFillColor(10, 22, 40); // Dein edler, dunkler Grundton
+  doc.rect(0, 0, 210, 40, 'F');
+  
+  // Titel links im Balken
+  doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.text('Schmerz & RLS Tagebuch', lm, 15);
+  doc.setFontSize(22);
+  doc.text('SymptoChron', lm, 18);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(148, 163, 184);
+  doc.text('MEDIZINISCHER VERLAUFSBERICHT', lm, 26);
+  
+  // STAMMDATEN OBEN RECHTS (Garantierte Darstellung auf dem Deckblatt!)
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(138, 168, 204);
-  doc.text(`Erstellt am: ${new Date().toLocaleDateString('de-DE', { day:'2-digit', month:'long', year:'numeric' })}`, lm, 25);
-  doc.text(`Zeitraum: ${dates.length > 0 ? dates[0] + ' – ' + dates[dates.length-1] : 'Keine Daten'}`, lm, 31);
+  doc.text(`Patient: ${pName}`, 130, 15);
+  doc.text(`Geb.: ${pBirth}`, 130, 21);
+  doc.text(`Kasse: ${pInsurance}`, 130, 27);
+  doc.text(`Erstellt am: ${new Date().toLocaleDateString('de-DE')}`, 130, 33);
 
-  y = 45;
+  // Haupttitel in der Mitte
+  doc.setTextColor(10, 22, 40);
+  doc.setFontSize(28);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Chronologischer Verlauf', lm, 75);
+  
+  doc.setTextColor(71, 85, 105);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Erfasste Daten zur Schmerzintensität und Restless-Legs-Symptomatik', lm, 83);
+
+  // DIE VISUELLE GRAPHIK IM WELLEN-FORMAT (wird mathematisch gezeichnet)
+  doc.setFillColor(20, 35, 60);
+  doc.beginPath();
+  doc.moveTo(0, 100);
+  // Zeichnet eine geschwungene Wellenform über die Breite des Blattes
+  doc.bezierCurveTo(40, 90, 70, 115, 110, 100);
+  doc.bezierCurveTo(150, 85, 180, 110, 210, 95);
+  doc.lineTo(210, 125);
+  doc.lineTo(0, 125);
+  doc.fill();
+
+  // Zeitraum & Statistik-Boxen unten auf dem Deckblatt
+  doc.setTextColor(10, 22, 40);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Übersicht des Erfassungszeitraums', lm, 145);
+  
+  // Berechnungen für die Statistik
+  let totalDays = dates.length;
+  let avgPain = 0;
+  let totalRlsDays = 0;
+
+  if (totalDays > 0) {
+    let painSum = 0;
+    dates.forEach(d => {
+      painSum += Number(store[d].painScore || 0);
+      if (store[d].rlsScore && Number(store[d].rlsScore) > 0) {
+        totalRlsDays++;
+      }
+    });
+    avgPain = (painSum / totalDays).toFixed(1);
+  }
+
+  // Boxen zeichnen
+  doc.setDrawColor(226, 232, 240);
+  doc.setFillColor(248, 250, 252);
+  
+  // Box 1: Tage
+  doc.rect(lm, 155, 80, 25, 'FD');
+  doc.setTextColor(71, 85, 105);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('ERFASSTE TAGE GESAMT', lm + 5, 162);
+  doc.setTextColor(10, 22, 40);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${totalDays} Tage`, lm + 5, 175);
+
+  // Box 2: Schmerz-Schnitt
+  doc.rect(lm + 90, 155, 80, 25, 'FD');
+  doc.setTextColor(71, 85, 105);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Ø SCHMERZINTENSITÄT', lm + 95, 162);
+  doc.setTextColor(10, 22, 40);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${avgPain} / 10`, lm + 95, 175);
+
+  // DER MEDIKAMENTENPLAN AUF DEM DECKBLATT
+  doc.setTextColor(10, 22, 40);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Aktueller Dauermedikationsplan', lm, 195);
+  
+  doc.setLineWidth(0.2);
+  doc.line(lm, 198, rm, 198);
+
+  let medY = 206;
+  doc.setFontSize(10);
+  if (meds && meds.length > 0) {
+    meds.forEach(med => {
+      if (medY < 270) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text(`• ${med.name || 'Unbekanntes Medikament'}`, lm, medY);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        // Konstruiert die Einnahme-Zeiten falls vorhanden
+        let scheduleText = `${med.dosage || ''} | ${med.schedule || 'Nach Plan'}`;
+        doc.text(scheduleText, lm + 60, medY);
+        medY += 7;
+      }
+    });
+  } else {
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(148, 163, 184);
+    doc.text('Keine Dauermedikation in der App hinterlegt.', lm, medY);
+  }
+
+  // Footer Deckblatt
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Generiert mit SymptoChron – Patientenselbstmanagement', lm, 285);
+
+
+  // ==========================================
+  // AB SEITE 2: DIE DATEN-TABELLEN
+  // ==========================================
+  doc.addPage();
+  
+  // Kleiner kompakter Header für Folgeseiten
+  doc.setFillColor(10, 22, 40);
+  doc.rect(0, 0, 210, 20, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('SymptoChron Verlaufsprotokoll', lm, 13);
+  
+  // Stammdaten dezent oben rechts auf Folgeseiten wiederholen
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Patient: ${pName} | Geb: ${pBirth}`, 135, 13);
+
+  let y = 32;
   doc.setTextColor(30, 30, 30);
+  
+  // Tabellenkopf zeichnen
+  doc.setFillColor(241, 245, 249);
+  doc.rect(lm, y, 170, 8, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('Datum', lm + 2, y + 5.5);
+  doc.text('Schmerz', lm + 30, y + 5.5);
+  doc.text('RLS', lm + 55, y + 5.5);
+  doc.text('Notizen / Besonderheiten', lm + 75, y + 5.5);
+  
+  y += 8;
+
+  // Schleife über alle 41 Tage
+  dates.forEach((dateStr) => {
+    // Prüfen auf Seitenumbruch, damit nichts unten rausfällt
+    if (y > 270) {
+      doc.addPage();
+      // Header auf neuer Seite wiederholen
+      doc.setFillColor(10, 22, 40);
+      doc.rect(0, 0, 210, 20, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SymptoChron Verlaufsprotokoll', lm, 13);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Patient: ${pName} | Geb: ${pBirth}`, 135, 13);
+      y = 30;
+    }
+
+    const data = store[dateStr];
+    const pScore = Number(data.painScore || 0);
+    const rScore = Number(data.rlsScore || 0);
+    
+    // Zeilenhintergrund (leichtes graues Gittermuster für die Lesbarkeit)
+    doc.setDrawColor(241, 245, 249);
+    doc.line(lm, y + 7, rm, y + 7);
+
+    // Datum schreiben
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85);
+    doc.text(dateStr, lm + 2, y + 5);
+
+    // ── DEINE FARBSKALA FÜR SCHMERZ ──
+    // 1-3: Grün | 4-5: Gelb/Orange | ab 6: Fett & Rot
+    if (pScore >= 1 && pScore <= 3) {
+      doc.setTextColor(46, 125, 50); // Kräftiges Grün
+      doc.setFont('helvetica', 'bold');
+    } else if (pScore >= 4 && pScore <= 5) {
+      doc.setTextColor(217, 119, 6); // Sattes Orange/Gelb
+      doc.setFont('helvetica', 'bold');
+    } else if (pScore >= 6) {
+      doc.setTextColor(185, 28, 28); // Signalrot
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11); // Größer darstellen!
+    } else {
+      doc.setTextColor(148, 163, 184); // 0 = Hellgrau
+      doc.setFont('helvetica', 'normal');
+    }
+    doc.text(`${pScore} / 10`, lm + 30, y + 5);
+    doc.setFontSize(9); // Wieder zurücksetzen
+
+    // ── DEINE INTERPRETATION FÜR RLS ──
+    if (rScore > 0) {
+      doc.setTextColor(109, 40, 217); // Lila für RLS
+      doc.setFont('helvetica', 'bold');
+      if (rScore >= 6) doc.setFontSize(11); // Auch RLS ab Stufe 6 dicker machen
+    } else {
+      doc.setTextColor(148, 163, 184);
+      doc.setFont('helvetica', 'normal');
+    }
+    doc.text(`${rScore} / 10`, lm + 55, y + 5);
+    doc.setFontSize(9);
+
+    // Notiztext (Abschneiden, falls er zu lang für die Zeile wird)
+    doc.setTextColor(30, 41, 59);
+    doc.setFont('helvetica', 'normal');
+    let noteText = data.notes || '';
+    if (data.triggers && data.triggers.length > 0) {
+      noteText += ` (Faktoren: ${data.triggers.join(', ')})`;
+    }
+    let shortNote = doc.splitTextToSize(noteText, 90);
+    doc.text(shortNote[0] || 'Keine Einträge', lm + 75, y + 5);
+
+    y += 8; // Zur nächsten Zeile wandern
+  });
+
+  // Dokument im Browser öffnen oder Druckdialog triggern
+  doc.openInNewWindow();
+}
 
   // Stats
   if (dates.length > 0) {
@@ -243,6 +480,11 @@ function importData(input) {
           Object.assign(rs, data.rlsSurveys);
           saveRlsSurveys(rs);
         }
+        if (data.bloodPressure && typeof getBloodPressureEntries === 'function' && typeof saveBloodPressureEntries === 'function') {
+          const bp = getBloodPressureEntries();
+          bp.push(...data.bloodPressure);
+          saveBloodPressureEntries(bp);
+        }
         buildWeekStrip();
         renderMedList();
         initRlsTab();
@@ -340,10 +582,10 @@ function clearAllData() {
   localStorage.removeItem('painDiarySettings');
   localStorage.removeItem('painDiaryRlsDaily');
   localStorage.removeItem('painDiaryRlsSurvey');
+  localStorage.removeItem('painDiaryBloodPressure');
   buildWeekStrip();
   loadCurrentEntry();
   renderMedList();
   initRlsTab();
   showToast('🗑 Alle Daten gelöscht');
 }
-

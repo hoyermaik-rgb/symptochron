@@ -191,3 +191,77 @@ if (importZone) {
     }
   });
 }
+function filterDiaryEntries(query) {
+    const searchInput = query.toLowerCase().trim();
+    const resultsContainer = document.getElementById('appSearchResults');
+    const resultsBody = document.getElementById('appSearchResultsBody');
+
+    if (!searchInput) {
+        resultsContainer.style.display = 'none';
+        return;
+    }
+
+    resultsBody.innerHTML = '';
+    let matchCount = 0;
+
+    // Korrekte Storage-Keys
+    const diaryStore = JSON.parse(localStorage.getItem('painDiary') || '{}');
+    const rlsDailyStore = JSON.parse(localStorage.getItem('painDiaryRlsDaily') || '{}');
+    const rlsSurveys = JSON.parse(localStorage.getItem('painDiaryRlsSurvey') || '{}');
+
+    // Tagebuch durchsuchen
+    Object.entries(diaryStore).forEach(([date, entry]) => {
+        const notes = (entry.notes || '').toLowerCase();
+        const factors = entry.factors ? Object.keys(entry.factors).join(', ').toLowerCase() : '';
+
+        if (notes.includes(searchInput) || factors.includes(searchInput)) {
+            matchCount++;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-weight:600;">${date}</td>
+                <td><span style="background:rgba(0,212,170,0.1); padding:3px 8px; border-radius:4px; font-size:11px;">📋 Tagebuch</span></td>
+                <td style="font-size:13px; color:var(--text-2);">${notes || 'Faktoren: ' + factors}</td>
+            `;
+            resultsBody.appendChild(tr);
+        }
+    });
+
+    // RLS-Tagesdoku durchsuchen
+    Object.entries(rlsDailyStore).forEach(([date, entry]) => {
+        const triggers = (entry.triggers || '').toLowerCase();
+        const med = (entry.medication || '').toLowerCase();
+        const relief = (entry.relief || '').toLowerCase();
+
+        if (triggers.includes(searchInput) || med.includes(searchInput) || relief.includes(searchInput)) {
+            matchCount++;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-weight:600;">${date}</td>
+                <td><span style="background:rgba(167,139,250,0.15); padding:3px 8px; border-radius:4px; font-size:11px;">🦵 RLS-Doku</span></td>
+                <td style="font-size:13px; color:var(--text-2);">${med || triggers || relief}</td>
+            `;
+            resultsBody.appendChild(tr);
+        }
+    });
+
+    // IRLS-Fragebögen durchsuchen
+    Object.entries(rlsSurveys).forEach(([date, survey]) => {
+        if (JSON.stringify(survey).toLowerCase().includes(searchInput)) {
+            matchCount++;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-weight:600;">${date}</td>
+                <td><span style="background:rgba(167,139,250,0.15); padding:3px 8px; border-radius:4px; font-size:11px;">📊 IRLS</span></td>
+                <td style="font-size:13px; color:var(--text-2);">Score: ${survey.sum}/40 - ${survey.severity}</td>
+            `;
+            resultsBody.appendChild(tr);
+        }
+    });
+
+    if (matchCount > 0) {
+        resultsContainer.style.display = 'block';
+    } else {
+        resultsContainer.style.display = 'block';
+        resultsBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-3); padding:20px;">Keine Einträge für "${query}" gefunden.</td></tr>`;
+    }
+}
