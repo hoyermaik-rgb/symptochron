@@ -30,6 +30,38 @@ function exportCSV() {
   showToast('✅ CSV exportiert');
 }
 
+// ── Export CSV ───────────────────────────────────
+function exportCSV() {
+  const store = getStore();
+  const dates = Object.keys(store).sort();
+
+  if (dates.length === 0) { showToast('⚠️ Keine Daten zum Exportieren'); return; }
+
+  const header = 'datum,morgen_schmerz,morgen_rls,mittag_schmerz,mittag_rls,abend_schmerz,abend_rls,nacht_schmerz,nacht_rls,schlafdauer_stunden,schlafqualitaet_1_5,notizen';
+  const rows = dates.map(d => {
+    const e = store[d];
+    const cols = [
+      d,
+      e.morning_pain ?? '',
+      e.morning_rls  ?? '',
+      e.noon_pain    ?? '',
+      e.noon_rls     ?? '',
+      e.evening_pain ?? '',
+      e.evening_rls  ?? '',
+      e.night_pain   ?? '',
+      e.night_rls    ?? '',
+      e.sleepHours ?? '',
+      e.sleepQuality ?? '',
+      `"${(e.notes || '').replace(/"/g, '""')}"`,
+    ];
+    return cols.join(',');
+  });
+
+  const csv = [header, ...rows].join('\n');
+  downloadFile(csv, `schmerztagebuch_${todayStr()}.csv`, 'text/csv;charset=utf-8;');
+  showToast('✅ CSV exportiert');
+}
+
 // ── Export JSON ──────────────────────────────────
 function exportJSON() {
   const data = {
@@ -46,10 +78,60 @@ function exportJSON() {
   showToast('✅ JSON-Backup erstellt');
 }
 
-// ── Export PDF mit Deckblatt & Farbskala (Angepasst an Tageszeiten) ───────────────────────────
+// ── Export CSV ───────────────────────────────────
+function exportCSV() {
+  const store = getStore();
+  const dates = Object.keys(store).sort();
+
+  if (dates.length === 0) { showToast('⚠️ Keine Daten zum Exportieren'); return; }
+
+  const header = 'datum,morgen_schmerz,morgen_rls,mittag_schmerz,mittag_rls,abend_schmerz,abend_rls,nacht_schmerz,nacht_rls,schlafdauer_stunden,schlafqualitaet_1_5,notizen';
+  const rows = dates.map(d => {
+    const e = store[d];
+    const cols = [
+      d,
+      e.morning_pain ?? '',
+      e.morning_rls  ?? '',
+      e.noon_pain    ?? '',
+      e.noon_rls     ?? '',
+      e.evening_pain ?? '',
+      e.evening_rls  ?? '',
+      e.night_pain   ?? '',
+      e.night_rls    ?? '',
+      e.sleepHours ?? '',
+      e.sleepQuality ?? '',
+      `"${(e.notes || '').replace(/"/g, '""')}"`,
+    ];
+    return cols.join(',');
+  });
+
+  const csv = [header, ...rows].join('\n');
+  downloadFile(csv, `schmerztagebuch_${todayStr()}.csv`, 'text/csv;charset=utf-8;');
+  showToast('✅ CSV exportiert');
+}
+
+// ── Export JSON ──────────────────────────────────
+function exportJSON() {
+  const data = {
+    diary: getStore(),
+    medications: getMeds(),
+    settings: getSettings(),
+    rlsDaily: getRlsDaily(),
+    rlsSurveys: getRlsSurveys(),
+    bloodPressure: typeof getBloodPressureEntries === 'function' ? getBloodPressureEntries() : [],
+    exportedAt: new Date().toISOString(),
+    version: 3,
+  };
+  downloadFile(JSON.stringify(data, null, 2), `schmerztagebuch_backup_${todayStr()}.json`, 'application/json');
+  showToast('✅ JSON-Backup erstellt');
+}
+
+// ── Export PDF mit Deckblatt & Farbskala ───────────────────────────
 function exportPDF() {
-if (!window.jsPDF) { showToast('⏳ PDF-Bibliothek lädt...'); return; }
-const jsPDF = window.jsPDF;
+  const lib = window.jspdf || window.jsPDF;
+  if (!lib) { showToast('⏳ PDF-Bibliothek lädt nicht oder fehlt...'); return; }
+  
+  const { jsPDF } = lib;
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
 
   const store = getStore() || {};
@@ -57,8 +139,7 @@ const jsPDF = window.jsPDF;
   const meds  = getMeds() || [];
 
   const lm = 20, rm = 190;
-  
-  // Stammdaten absolut sicher aus der App holen (mit Fallbacks)
+  let y = 20;
   const pName = document.getElementById('patientName')?.value || 'Nicht angegeben';
   const pBirth = document.getElementById('patientBirth')?.value || document.getElementById('patientBday')?.value || 'Nicht angegeben';
   const pInsurance = document.getElementById('patientInsurance')?.value || 'Nicht angegeben';
@@ -66,12 +147,9 @@ const jsPDF = window.jsPDF;
   // ==========================================
   // SEITE 1: DAS DECKBLATT
   // ==========================================
-  
-  // Header-Balken oben links/rechts
-  doc.setFillColor(10, 22, 40); // Dein edler, dunkler Grundton
+  doc.setFillColor(10, 22, 40); 
   doc.rect(0, 0, 210, 40, 'F');
   
-  // Titel links im Balken
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(22);
@@ -81,7 +159,6 @@ const jsPDF = window.jsPDF;
   doc.setTextColor(148, 163, 184);
   doc.text('MEDIZINISCHER VERLAUFSBERICHT', lm, 26);
   
-  // STAMMDATEN OBEN RECHTS (Garantierte Darstellung auf dem Deckblatt!)
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -90,7 +167,6 @@ const jsPDF = window.jsPDF;
   doc.text(`Kasse: ${pInsurance}`, 130, 27);
   doc.text(`Erstellt am: ${new Date().toLocaleDateString('de-DE')}`, 130, 33);
 
-  // Haupttitel in der Mitte
   doc.setTextColor(10, 22, 40);
   doc.setFontSize(28);
   doc.setFont('helvetica', 'bold');
@@ -101,23 +177,17 @@ const jsPDF = window.jsPDF;
   doc.setFont('helvetica', 'normal');
   doc.text('Erfasste Daten zur Schmerzintensität und Restless-Legs-Symptomatik', lm, 83);
 
-  // DIE VISUELLE GRAPHIK IM WELLEN-FORMAT
+  // REPARIERT: Moderne, native Design-Blöcke statt Absturz-verursachender bezierCurve
   doc.setFillColor(20, 35, 60);
-  doc.beginPath();
-  doc.moveTo(0, 100);
-  doc.bezierCurveTo(40, 90, 70, 115, 110, 100);
-  doc.bezierCurveTo(150, 85, 180, 110, 210, 95);
-  doc.lineTo(210, 125);
-  doc.lineTo(0, 125);
-  doc.fill();
+  doc.rect(0, 100, 210, 15, 'F');
+  doc.setFillColor(30, 50, 85);
+  doc.rect(40, 105, 130, 5, 'F');
 
-  // Zeitraum & Statistik-Boxen unten auf dem Deckblatt
   doc.setTextColor(10, 22, 40);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.text('Übersicht des Erfassungszeitraums', lm, 145);
   
-  // Berechnungen für die Statistik aus deinen echten Daten (Tageszeiten-Durchschnitt)
   let totalDays = dates.length;
   let avgPain = 0;
 
@@ -126,10 +196,9 @@ const jsPDF = window.jsPDF;
     let countValues = 0;
     dates.forEach(d => {
       const e = store[d] || {};
-      // Da deine Daten in morning_pain, noon_pain etc. liegen, rechnen wir den Tagesschnitt aus
       const dayValues = [e.morning_pain, e.noon_pain, e.evening_pain, e.night_pain].map(Number).filter(v => !isNaN(v) && v > 0);
       if (dayValues.length > 0) {
-        const dayMax = Math.max(...dayValues); // Wir nehmen den Maximalwert des Tages für die Statistik
+        const dayMax = Math.max(...dayValues); 
         painSum += dayMax;
         countValues++;
       }
@@ -137,11 +206,9 @@ const jsPDF = window.jsPDF;
     avgPain = countValues > 0 ? (painSum / countValues).toFixed(1) : "0.0";
   }
 
-  // Boxen zeichnen
   doc.setDrawColor(226, 232, 240);
   doc.setFillColor(248, 250, 252);
   
-  // Box 1: Tage
   doc.rect(lm, 155, 80, 25, 'FD');
   doc.setTextColor(71, 85, 105);
   doc.setFontSize(10);
@@ -152,7 +219,6 @@ const jsPDF = window.jsPDF;
   doc.setFont('helvetica', 'bold');
   doc.text(`${totalDays} Tage`, lm + 5, 175);
 
-  // Box 2: Schmerz-Schnitt
   doc.rect(lm + 90, 155, 80, 25, 'FD');
   doc.setTextColor(71, 85, 105);
   doc.setFontSize(10);
@@ -163,7 +229,6 @@ const jsPDF = window.jsPDF;
   doc.setFont('helvetica', 'bold');
   doc.text(`${avgPain} / 10`, lm + 95, 175);
 
-  // DER MEDIKAMENTENPLAN AUF DEM DECKBLATT
   doc.setTextColor(10, 22, 40);
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
@@ -194,7 +259,6 @@ const jsPDF = window.jsPDF;
     doc.text('Keine Dauermedikation in der App hinterlegt.', lm, medY);
   }
 
-  // Footer Deckblatt
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(148, 163, 184);
@@ -206,7 +270,6 @@ const jsPDF = window.jsPDF;
   if (totalDays > 0) {
     doc.addPage();
     
-    // Kleiner kompakter Header für Folgeseiten
     doc.setFillColor(10, 22, 40);
     doc.rect(0, 0, 210, 20, 'F');
     doc.setTextColor(255, 255, 255);
@@ -218,10 +281,9 @@ const jsPDF = window.jsPDF;
     doc.setFont('helvetica', 'normal');
     doc.text(`Patient: ${pName} | Geb: ${pBirth}`, 135, 13);
 
-    let y = 32;
+    y = 32;
     doc.setTextColor(30, 30, 30);
     
-    // Tabellenkopf zeichnen
     doc.setFillColor(241, 245, 249);
     doc.rect(lm, y, 170, 8, 'F');
     doc.setFont('helvetica', 'bold');
@@ -249,7 +311,6 @@ const jsPDF = window.jsPDF;
 
       const data = store[dateStr] || {};
       
-      // Ermittle den höchsten Schmerz- und RLS-Wert des Tages aus deinen Spalten
       const pValues = [data.morning_pain, data.noon_pain, data.evening_pain, data.night_pain].map(Number).filter(v => !isNaN(v));
       const rValues = [data.morning_rls, data.noon_rls, data.evening_rls, data.night_rls].map(Number).filter(v => !isNaN(v));
       
@@ -264,27 +325,25 @@ const jsPDF = window.jsPDF;
       doc.setTextColor(51, 65, 85);
       doc.text(dateStr, lm + 2, y + 5);
 
-      // ── DEINE GEWÜNSCHTE FARBSKALA FÜR SCHMERZ ──
       if (pScore >= 1 && pScore <= 3) {
-        doc.setTextColor(46, 125, 50); // Kräftiges Grün
+        doc.setTextColor(46, 125, 50); 
         doc.setFont('helvetica', 'bold');
       } else if (pScore >= 4 && pScore <= 5) {
-        doc.setTextColor(217, 119, 6); // Sattes Orange/Gelb
+        doc.setTextColor(217, 119, 6); 
         doc.setFont('helvetica', 'bold');
       } else if (pScore >= 6) {
-        doc.setTextColor(185, 28, 28); // Signalrot
+        doc.setTextColor(185, 28, 28); 
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11); // Ab Stufe 6 größer und fetter darstellen!
+        doc.setFontSize(11); 
       } else {
-        doc.setTextColor(148, 163, 184); // 0 = Hellgrau
+        doc.setTextColor(148, 163, 184); 
         doc.setFont('helvetica', 'normal');
       }
       doc.text(`${pScore} / 10`, lm + 30, y + 5);
-      doc.setFontSize(9); // Zurücksetzen
+      doc.setFontSize(9); 
 
-      // ── INTERPRETATION FÜR RLS ──
       if (rScore > 0) {
-        doc.setTextColor(109, 40, 217); // Lila für RLS
+        doc.setTextColor(109, 40, 217); 
         doc.setFont('helvetica', 'bold');
         if (rScore >= 6) doc.setFontSize(11);
       } else {
@@ -294,7 +353,6 @@ const jsPDF = window.jsPDF;
       doc.text(`${rScore} / 10`, lm + 55, y + 5);
       doc.setFontSize(9);
 
-      // Notiztext
       doc.setTextColor(30, 41, 59);
       doc.setFont('helvetica', 'normal');
       let noteText = data.notes || '';
@@ -311,7 +369,7 @@ const jsPDF = window.jsPDF;
   }
 
   // ==========================================
-  // ZUSATZ-SEITEN: DETAILLIERTE TAGEBUCHEINTRÄGE & HISTORIE
+  // ZUSATZ-SEITEN: DETAILANSICHT
   // ==========================================
   if (y > 240) { doc.addPage(); y = 20; }
 
@@ -327,7 +385,8 @@ const jsPDF = window.jsPDF;
       if (y > 250) { doc.addPage(); y = 20; }
 
       doc.setFillColor(240, 245, 255);
-      doc.roundedRect(lm, y, rm - lm, 7, 1, 1, 'F');
+      doc.rect(lm, y, rm - lm, 7, 'F');
+      
       doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(30,30,80);
       doc.text(`Eintrag vom ${d}`, lm + 3, y + 5); y += 10;
 
@@ -405,12 +464,26 @@ const jsPDF = window.jsPDF;
     }
   } catch(err) { console.warn("Surveys übersprungen:", err); }
 
-  // PDF speichern
+  // PDF Download über unblockierbaren Datei-Blob erzwingen
   try {
-    doc.save(`schmerztagebuch_${new Date().toISOString().split('T')[0]}.pdf`);
-    showToast('✅ PDF erfolgreich erstellt');
+    const filename = `schmerztagebuch_${new Date().toISOString().split('T')[0]}.pdf`;
+    const blob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+    
+    if (typeof showToast === 'function') {
+      showToast('✅ PDF wurde heruntergeladen!');
+    }
   } catch(e) {
-    doc.openInNewWindow();
+    doc.output('dataurlnewwindow');
   }
 }
 
