@@ -142,7 +142,7 @@ function exportPDF() {
   let y = 20;
   const pName = document.getElementById('patientName')?.value || 'Nicht angegeben';
   const pBirth = document.getElementById('patientBirth')?.value || document.getElementById('patientBday')?.value || 'Nicht angegeben';
-  const pInsurance = document.getElementById('patientInsurance')?.value || 'Nicht angegeben';
+  const pInsurance = document.getElementById('patientInsurance')?.value || 'Barmer';
 
   // ==========================================
   // SEITE 1: DAS DECKBLATT
