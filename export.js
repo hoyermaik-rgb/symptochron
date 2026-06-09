@@ -177,11 +177,10 @@ function exportPDF() {
   doc.setFont('helvetica', 'normal');
   doc.text('Erfasste Daten zur Schmerzintensität und Restless-Legs-Symptomatik', lm, 83);
 
-  // REPARIERT: Moderne, native Design-Blöcke statt Absturz-verursachender bezierCurve
+  // NEUES DESIGN: Eleganter, diagonaler Design-Schnitt (Nativ und fehlerfrei)
   doc.setFillColor(20, 35, 60);
-  doc.rect(0, 100, 210, 15, 'F');
-  doc.setFillColor(30, 50, 85);
-  doc.rect(40, 105, 130, 5, 'F');
+  doc.triangle(0, 95, 210, 95, 210, 115, 'F'); // Schräge Kante oben
+  doc.rect(0, 115, 210, 10, 'F');              // Basis-Balken
 
   doc.setTextColor(10, 22, 40);
   doc.setFontSize(16);
@@ -206,8 +205,8 @@ function exportPDF() {
     avgPain = countValues > 0 ? (painSum / countValues).toFixed(1) : "0.0";
   }
 
-  doc.setDrawColor(226, 232, 240);
-  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(240, 240, 240);
+  doc.setFillColor(240, 240, 240);
   
   doc.rect(lm, 155, 80, 25, 'FD');
   doc.setTextColor(71, 85, 105);
