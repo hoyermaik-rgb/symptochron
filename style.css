@@ -1254,3 +1254,208 @@ canvas#mainChart { width: 100% !important; max-height: 280px; }
   color: var(--accent-2);
 }
 .med-intake-time-btn.taken span { color: var(--accent-2) !important; }
+
+/* ══════════════════════════════════════════════════
+   UX IMPROVEMENTS – Benutzerfreundlichkeit
+   ══════════════════════════════════════════════════ */
+
+/* Smooth tab transition */
+.tab-section.active {
+  animation: tabFadeIn 0.22s ease-out;
+}
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Floating save button – always accessible */
+.floating-save-wrap {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 14px 20px 24px;
+  background: linear-gradient(to top, var(--bg-deep) 40%, rgba(8,17,31,0.92) 75%, transparent);
+  z-index: 90;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.floating-save-wrap .btn-primary {
+  pointer-events: auto;
+  max-width: 440px;
+  width: 100%;
+  font-size: 15px;
+  padding: 14px 28px;
+  box-shadow: 0 6px 28px rgba(59,158,255,0.4);
+  border-radius: 14px;
+}
+.floating-save-wrap .btn-primary:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* Save success pulse animation */
+.btn-primary.pulse-ok {
+  animation: pulseOk 0.65s ease;
+}
+@keyframes pulseOk {
+  0%   { box-shadow: 0 0 0 0 rgba(0,212,170,0.55); }
+  60%  { box-shadow: 0 0 0 14px rgba(0,212,170,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,212,170,0); }
+}
+
+/* Heute quick button */
+.today-btn {
+  background: rgba(0,212,170,0.1);
+  border: 1px solid rgba(0,212,170,0.25);
+  color: var(--accent-2);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.today-btn:hover {
+  background: rgba(0,212,170,0.2);
+  border-color: var(--accent-2);
+}
+.today-btn.hidden {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Larger touch targets */
+.nav-tab {
+  padding: 14px 10px 12px;
+  gap: 5px;
+}
+.nav-tab .tab-icon { font-size: 20px; }
+.week-day-btn {
+  min-width: 46px;
+  padding: 10px 4px;
+  border-radius: 10px;
+}
+
+/* Better score selects */
+.score-select {
+  padding: 9px 30px 9px 10px;
+  min-height: 42px;
+  font-size: 14px;
+  border-radius: 10px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238aa8cc' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.score-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+/* Better cards */
+.card {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover {
+  border-color: var(--border-lg);
+}
+
+/* Better form inputs */
+.form-input {
+  min-height: 42px;
+  font-size: 14px;
+  border-radius: 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.form-input:focus {
+  box-shadow: 0 0 0 3px rgba(59,158,255,0.12);
+}
+
+/* Better notes area */
+.notes-area {
+  min-height: 80px;
+  font-size: 14px;
+  border-radius: 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.notes-area:focus {
+  box-shadow: 0 0 0 3px rgba(0,212,170,0.08);
+}
+
+/* Improved toast */
+.toast {
+  font-size: 14px;
+  padding: 12px 24px;
+  border-radius: 14px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+}
+
+/* Better date nav */
+.date-nav {
+  padding: 14px 16px;
+  border-radius: 14px;
+}
+.date-nav-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  font-size: 18px;
+}
+.date-nav-label {
+  font-size: 15px;
+}
+
+/* Better time blocks */
+.time-block {
+  border-radius: 14px;
+  padding: 16px;
+}
+.time-block:hover {
+  border-color: var(--border-lg);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+
+/* Better bottom spacer for floating save */
+.tab-section .bottom-spacer {
+  height: 90px;
+}
+
+/* Better modal */
+.modal {
+  border-radius: 16px;
+  max-width: 480px;
+}
+.modal-overlay.open {
+  animation: modalIn 0.2s ease-out;
+}
+@keyframes modalIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Better stats */
+.stat-val {
+  font-size: 26px;
+}
+
+/* Section titles */
+.section-title {
+  font-size: 17px;
+  letter-spacing: -0.3px;
+}
+
+/* Improved tag buttons */
+.tag-btn {
+  padding: 10px 16px;
+  font-size: 13px;
+  border-radius: 100px;
+}
+
+/* Chart wrap */
+.chart-wrap {
+  border-radius: 14px;
+}

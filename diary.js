@@ -159,6 +159,15 @@ function saveEntry() {
   if (store[currentDate] && typeof markDataEnteredToday === 'function') markDataEnteredToday();
   buildWeekStrip();
   showToast('✅ Eintrag gespeichert');
+
+  // Pulse animation on save button
+  var saveBtn = document.getElementById('saveEntryBtn');
+  if (saveBtn) {
+    saveBtn.classList.remove('pulse-ok');
+    void saveBtn.offsetWidth;
+    saveBtn.classList.add('pulse-ok');
+    setTimeout(function() { saveBtn.classList.remove('pulse-ok'); }, 700);
+  }
 }
 
 function refreshDiary() {
@@ -231,6 +240,8 @@ function updateNavLabel() {
   document.getElementById('navDateSub').textContent =
     currentDate === todayStr() ? 'Heute' : '';
   document.getElementById('datePickerInput').value = currentDate;
+  var todayBtn = document.getElementById('todayBtn');
+  if (todayBtn) todayBtn.classList.toggle('hidden', currentDate === todayStr());
 }
 
 function changeDay(delta) {
@@ -240,5 +251,10 @@ function changeDay(delta) {
 
 function goToDate(val) {
   if (val) { currentDate = val; refreshDiary(); }
+}
+
+function goToToday() {
+  currentDate = todayStr();
+  refreshDiary();
 }
 

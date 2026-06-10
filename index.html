@@ -83,6 +83,7 @@
           <div class="date-nav-label" id="navDateLabel">–</div>
           <div class="date-nav-sub" id="navDateSub">–</div>
         </div>
+        <button class="today-btn" id="todayBtn" onclick="goToToday()">📍 Heute</button>
         <input type="date" class="date-input" id="datePickerInput" onchange="goToDate(this.value)" />
         <button class="date-nav-btn" onclick="changeDay(1)">›</button>
       </div>
@@ -161,8 +162,10 @@
         </div>
       </div>
 
-      <!-- Save Button -->
-      <button class="btn-primary" onclick="saveEntry()">💾 Eintrag speichern</button>
+      <!-- Floating Save Button -->
+      <div class="floating-save-wrap" id="floatingSaveWrap">
+        <button class="btn-primary" id="saveEntryBtn" onclick="saveEntry()">💾 Eintrag speichern</button>
+      </div>
       <div class="bottom-spacer"></div>
     </section>
 
@@ -752,5 +755,5 @@
 <script src="export.js"></script>
 <script src="patient.js"></script>
 <script src="scanner.js"></script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a09a0ca14e60dc56',t:'MTc4MTExMjA1Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
