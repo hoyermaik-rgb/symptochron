@@ -65,20 +65,6 @@ function getStore() {
 }
 function saveStore(d) { localStorage.setItem('painDiary', JSON.stringify(d)); }
 
-function getMeds() {
-  try {
-    let meds = JSON.parse(localStorage.getItem('painDiaryMeds') || '[]');
-    let changed = false;
-    meds = meds.map((m, i) => {
-      if (!m.id) { changed = true; return { ...m, id: 'med_' + i }; }
-      return m;
-    });
-    if (changed) saveMeds(meds);
-    return meds;
-  } catch { return []; }
-}
-function saveMeds(m) { localStorage.setItem('painDiaryMeds', JSON.stringify(m)); }
-
 function getSettings() {
   try { return JSON.parse(localStorage.getItem('painDiarySettings') || '{}'); } catch { return {}; }
 }
@@ -94,8 +80,15 @@ function getRlsSurveys() {
 }
 function saveRlsSurveys(s) { localStorage.setItem('painDiaryRlsSurvey', JSON.stringify(s)); }
 
+function formatLocalDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  return formatLocalDate(new Date());
 }
 
 function parseDate(str) {
@@ -111,24 +104,48 @@ function formatDateLabel(str) {
 function addDays(str, n) {
   const d = parseDate(str);
   d.setDate(d.getDate() + n);
-  return d.toISOString().split('T')[0];
+  return formatLocalDate(d);
 }
 
 // ── Init ────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+function initImportZone() {
+  const importZone = document.querySelector('.import-zone');
+  if (!importZone || importZone.dataset.initialized === 'true') return;
+  importZone.dataset.initialized = 'true';
+  importZone.addEventListener('dragover', e => { e.preventDefault(); importZone.style.borderColor = '#3b9eff'; });
+  importZone.addEventListener('dragleave', () => { importZone.style.borderColor = ''; });
+  importZone.addEventListener('drop', e => {
+    e.preventDefault();
+    importZone.style.borderColor = '';
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const fi = document.getElementById('fileInput');
+      fi.files = dt.files;
+      importData(fi);
+    }
+  });
+}
+
+function initApp() {
   updateHeaderDate();
   buildTimeBlocks();
+  buildInfluenceTags();
   buildWeekStrip();
   populateRlsSymptomSelect();
   buildSurveyQuestions();
+  renderMedList();
   loadCurrentEntry();
   updateNavLabel();
-  renderMedList();
-  buildInfluenceTags();
   initRlsTab();
   loadRlsModeSettings();
   refreshMedInteractionAlert();
-});
+  initImportZone();
+  applyInitialRoute();
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
 
 function updateHeaderDate() {
   const d = new Date();
@@ -142,10 +159,21 @@ function switchTab(name) {
   document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+  if (location.hash !== `#${name}`) {
+    history.replaceState(null, '', `#${name}`);
+  }
   if (name === 'charts') renderCharts();
   if (name === 'rls') refreshRlsTab();
   if (name === 'meds') renderMedList();
   if (name === 'analysis') renderAnalysisTab();
+}
+
+function applyInitialRoute() {
+  const route = (location.hash || '').replace('#', '').trim();
+  const validTabs = ['diary', 'rls', 'meds', 'analysis', 'charts', 'export'];
+  if (validTabs.includes(route)) {
+    switchTab(route);
+  }
 }
 
 // ── Utilities ────────────────────────────────────
@@ -173,95 +201,12 @@ function escHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Drag & drop for import zone
-const importZone = document.querySelector('.import-zone');
-if (importZone) {
-  importZone.addEventListener('dragover', e => { e.preventDefault(); importZone.style.borderColor = '#3b9eff'; });
-  importZone.addEventListener('dragleave', () => { importZone.style.borderColor = ''; });
-  importZone.addEventListener('drop', e => {
-    e.preventDefault();
-    importZone.style.borderColor = '';
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      const fi = document.getElementById('fileInput');
-      fi.files = dt.files;
-      importData(fi);
-    }
-  });
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }, { once: true });
 }
-function filterDiaryEntries(query) {
-    const searchInput = query.toLowerCase().trim();
-    const resultsContainer = document.getElementById('appSearchResults');
-    const resultsBody = document.getElementById('appSearchResultsBody');
 
-    if (!searchInput) {
-        resultsContainer.style.display = 'none';
-        return;
-    }
-
-    resultsBody.innerHTML = '';
-    let matchCount = 0;
-
-    // Korrekte Storage-Keys
-    const diaryStore = JSON.parse(localStorage.getItem('painDiary') || '{}');
-    const rlsDailyStore = JSON.parse(localStorage.getItem('painDiaryRlsDaily') || '{}');
-    const rlsSurveys = JSON.parse(localStorage.getItem('painDiaryRlsSurvey') || '{}');
-
-    // Tagebuch durchsuchen
-    Object.entries(diaryStore).forEach(([date, entry]) => {
-        const notes = (entry.notes || '').toLowerCase();
-        const factors = entry.factors ? Object.keys(entry.factors).join(', ').toLowerCase() : '';
-
-        if (notes.includes(searchInput) || factors.includes(searchInput)) {
-            matchCount++;
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="font-weight:600;">${date}</td>
-                <td><span style="background:rgba(0,212,170,0.1); padding:3px 8px; border-radius:4px; font-size:11px;">📋 Tagebuch</span></td>
-                <td style="font-size:13px; color:var(--text-2);">${notes || 'Faktoren: ' + factors}</td>
-            `;
-            resultsBody.appendChild(tr);
-        }
-    });
-
-    // RLS-Tagesdoku durchsuchen
-    Object.entries(rlsDailyStore).forEach(([date, entry]) => {
-        const triggers = (entry.triggers || '').toLowerCase();
-        const med = (entry.medication || '').toLowerCase();
-        const relief = (entry.relief || '').toLowerCase();
-
-        if (triggers.includes(searchInput) || med.includes(searchInput) || relief.includes(searchInput)) {
-            matchCount++;
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="font-weight:600;">${date}</td>
-                <td><span style="background:rgba(167,139,250,0.15); padding:3px 8px; border-radius:4px; font-size:11px;">🦵 RLS-Doku</span></td>
-                <td style="font-size:13px; color:var(--text-2);">${med || triggers || relief}</td>
-            `;
-            resultsBody.appendChild(tr);
-        }
-    });
-
-    // IRLS-Fragebögen durchsuchen
-    Object.entries(rlsSurveys).forEach(([date, survey]) => {
-        if (JSON.stringify(survey).toLowerCase().includes(searchInput)) {
-            matchCount++;
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td style="font-weight:600;">${date}</td>
-                <td><span style="background:rgba(167,139,250,0.15); padding:3px 8px; border-radius:4px; font-size:11px;">📊 IRLS</span></td>
-                <td style="font-size:13px; color:var(--text-2);">Score: ${survey.sum}/40 - ${survey.severity}</td>
-            `;
-            resultsBody.appendChild(tr);
-        }
-    });
-
-    if (matchCount > 0) {
-        resultsContainer.style.display = 'block';
-    } else {
-        resultsContainer.style.display = 'block';
-        resultsBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-3); padding:20px;">Keine Einträge für "${query}" gefunden.</td></tr>`;
-    }
-}
+window.addEventListener('hashchange', applyInitialRoute);
+registerServiceWorker();

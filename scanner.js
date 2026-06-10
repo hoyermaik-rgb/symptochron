@@ -2,7 +2,90 @@
 // SYMPTOCHRON - SMART SCANNER (BMP & PZN SUPPORT)
 // ══════════════════════════════════════════════
 
-let html5QrScanner = null;
+var html5QrScanner = window.html5QrScanner || null;
+window.html5QrScanner = html5QrScanner;
+
+function commitScannedMedications(meds) {
+  if (!Array.isArray(meds) || meds.length === 0) return;
+  if (typeof importParsedMedications === 'function') {
+    importParsedMedications(meds, 'scan');
+    return;
+  }
+  if (typeof saveMeds === 'function') saveMeds(meds);
+  if (typeof renderMedList === 'function') renderMedList();
+}
+
+function buildScannedMedication(data) {
+  return {
+    id: data.id || `med_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    name: data.name || 'Unbekannt',
+    pzn: data.pzn || '',
+    dose: data.dose || '',
+    form: data.form || '',
+    note: data.note || '',
+    source: 'scan',
+    schedule: {
+      morning: parseFloat(data.schedule?.morning || 0) || 0,
+      noon: parseFloat(data.schedule?.noon || 0) || 0,
+      evening: parseFloat(data.schedule?.evening || 0) || 0,
+      night: parseFloat(data.schedule?.night || 0) || 0,
+    }
+  };
+}
+
+function setScannerUiState(isScanning) {
+  const container = document.getElementById("scanner-video-container");
+  const startBtn = document.getElementById("startScanBtn");
+  const stopBtn = document.getElementById("stopScanBtn");
+
+  if (container) {
+    container.style.display = isScanning ? "block" : "none";
+    container.style.width = "100%";
+    container.style.maxWidth = "450px";
+    container.style.minHeight = isScanning ? "320px" : "0";
+    container.style.margin = "15px auto 0 auto";
+    container.style.overflow = "hidden";
+    container.style.borderRadius = "12px";
+    container.style.background = "#000";
+    container.style.position = "relative";
+  }
+  if (startBtn) startBtn.style.display = isScanning ? "none" : "inline-block";
+  if (stopBtn) stopBtn.style.display = isScanning ? "inline-block" : "none";
+}
+
+function forceScannerVideoVisible() {
+  const container = document.getElementById("scanner-video-container");
+  if (!container) return;
+
+  const video = container.querySelector("video");
+  if (video) {
+    video.setAttribute("playsinline", "true");
+    video.muted = true;
+    video.style.display = "block";
+    video.style.visibility = "visible";
+    video.style.opacity = "1";
+    video.style.width = "100%";
+    video.style.height = "auto";
+    video.style.maxHeight = "70vh";
+    video.style.objectFit = "cover";
+    video.style.background = "#000";
+  }
+
+  const scanRegion = container.querySelector("#reader__scan_region, [id$='__scan_region']");
+  if (scanRegion) {
+    scanRegion.style.minHeight = "320px";
+    scanRegion.style.display = "flex";
+    scanRegion.style.alignItems = "center";
+    scanRegion.style.justifyContent = "center";
+    scanRegion.style.background = "#000";
+  }
+
+  const canvas = container.querySelector("canvas");
+  if (canvas) {
+    canvas.style.maxWidth = "100%";
+    canvas.style.height = "auto";
+  }
+}
 
 async function startQRScanner() {
   const containerId = "scanner-video-container";
@@ -14,32 +97,45 @@ async function startQRScanner() {
       throw new Error("Scanner-Bibliothek wurde nicht geladen.");
     }
 
+    setScannerUiState(true);
+    container.innerHTML = "";
+
     if (html5QrScanner) {
       await html5QrScanner.stop().catch(() => {});
+      if (typeof html5QrScanner.clear === "function") {
+        await html5QrScanner.clear().catch(() => {});
+      }
       html5QrScanner = null;
     }
 
+    await new Promise(resolve => setTimeout(resolve, 80));
+
     html5QrScanner = new Html5Qrcode(containerId);
-    const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
-    const formats = [
-      Html5QrcodeSupportedFormats.QR_CODE,
-      Html5QrcodeSupportedFormats.DATA_MATRIX,
-      Html5QrcodeSupportedFormats.CODE_128
-    ];
+    const config = {
+      fps: 10,
+      qrbox: { width: 250, height: 250 },
+      aspectRatio: 1.0,
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.DATA_MATRIX,
+        Html5QrcodeSupportedFormats.CODE_128
+      ]
+    };
 
     await html5QrScanner.start(
       { facingMode: "environment" },
-      { ...config, formatsToSupport: formats },
+      config,
       onScanSuccess,
       onScanFailure
     );
 
-    document.getElementById("scanner-video-container").style.display = "block";
-    document.getElementById("startScanBtn").style.display = "none";
-    document.getElementById("stopScanBtn").style.display = "block";
+    forceScannerVideoVisible();
+    setTimeout(forceScannerVideoVisible, 150);
+    setTimeout(forceScannerVideoVisible, 500);
 
   } catch (err) {
     console.error("Kamera-Fehler:", err);
+    setScannerUiState(false);
     const message = window.isSecureContext
       ? "Kamera-Zugriff fehlgeschlagen"
       : "Scanner braucht HTTPS oder localhost";
@@ -48,20 +144,27 @@ async function startQRScanner() {
 }
 
 function stopQRScanner() {
-  if (html5QrScanner) {
-    html5QrScanner.stop().then(() => {
-      html5QrScanner = null;
-      document.getElementById("scanner-video-container").style.display = "none";
-      document.getElementById("startScanBtn").style.display = "block";
-      document.getElementById("stopScanBtn").style.display = "none";
-    }).catch(err => {
-      console.error("Fehler beim Stoppen:", err);
-      html5QrScanner = null;
-      document.getElementById("scanner-video-container").style.display = "none";
-      document.getElementById("startScanBtn").style.display = "block";
-      document.getElementById("stopScanBtn").style.display = "none";
-    });
+  const container = document.getElementById("scanner-video-container");
+
+  if (!html5QrScanner) {
+    if (container) container.innerHTML = "";
+    setScannerUiState(false);
+    return;
   }
+
+  html5QrScanner.stop().then(async () => {
+    if (typeof html5QrScanner.clear === "function") {
+      await html5QrScanner.clear().catch(() => {});
+    }
+    html5QrScanner = null;
+    if (container) container.innerHTML = "";
+    setScannerUiState(false);
+  }).catch(err => {
+    console.error("Fehler beim harten Stoppen:", err);
+    html5QrScanner = null;
+    if (container) container.innerHTML = "";
+    setScannerUiState(false);
+  });
 }
 
 function onScanSuccess(decodedText) {
@@ -74,113 +177,126 @@ function onScanFailure(error) {}
 
 function parseMedicationPlan(text) {
   try {
-    let meds = (typeof getMeds === 'function') ? getMeds() : [];
+    const meds = [];
     let added = 0;
 
-    const cleanText = text.trim();
-
-    // 1. PZN Erkennung (7-10 stellige Zahl)
-    const isPZN = /^\d{7,10}$/.test(cleanText);
-    
-    if (isPZN) {
-      const pznClean = cleanText;
-      if (typeof showToast === 'function') showToast("PZN erkannt: " + pznClean);
-      
-      meds.push({
-        id: "med_" + Date.now(),
-        name: "Medikament (PZN: " + pznClean + ")",
-        pzn: pznClean,
-        dose: "Bitte ergänzen",
-        form: "Bitte ergänzen",
-        schedule: { morning: 0, noon: 0, evening: 0, night: 0 },
-        time: "Bitte Einnahmezeiten angeben",
-        note: "Über QR-Code importiert"
-      });
-      added++;
-    }
-    // 2. BMP-Format (einfache Erkennung)
-    else if (text.includes("MP") || text.includes("\x1F")) {
+    // 1. VERSUCH: BMP Plan (Großer Block mit vielen Daten)
+    if (text.includes("MP") || text.includes("\x1F")) {
       const delimiter = text.includes("\x1F") ? "\x1F" : ";";
       const tokens = text.split(delimiter);
-      
+
       for (let i = 0; i < tokens.length; i++) {
-        if (tokens[i]?.trim() === "M" && i + 8 < tokens.length) {
-          const name = tokens[i + 2]?.trim() || "Unbekannt";
-          const pzn = tokens[i + 1]?.trim() || "";
-          const dose = tokens[i + 3]?.trim() || "";
-          const form = tokens[i + 4]?.trim() || "";
-          const morning = parseFloat(tokens[i + 5]?.replace(',', '.') || 0);
-          const noon = parseFloat(tokens[i + 6]?.replace(',', '.') || 0);
-          const evening = parseFloat(tokens[i + 7]?.replace(',', '.') || 0);
-          const night = parseFloat(tokens[i + 8]?.replace(',', '.') || 0);
-          
-          if (morning > 0 || noon > 0 || evening > 0 || night > 0) {
-            const timeStr = [];
-            if (morning > 0) timeStr.push(morning + "× Morgens");
-            if (noon > 0) timeStr.push(noon + "× Mittags");
-            if (evening > 0) timeStr.push(evening + "× Abends");
-            if (night > 0) timeStr.push(night + "× Nachts");
-            
-            meds.push({
-              id: "med_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
-              name: name,
-              pzn: pzn,
-              dose: dose,
-              form: form,
-              schedule: { morning, noon, evening, night },
-              time: timeStr.join(" · "),
-              note: "Über QR-Code importiert"
-            });
-            added++;
-            i += 8;
-          }
+        if (tokens[i] === "M" && i + 1 < tokens.length) {
+          meds.push(buildScannedMedication({
+            name: tokens[i + 2] || "Unbekannt",
+            pzn: tokens[i + 1] || "",
+            dose: tokens[i + 3] || "",
+            form: tokens[i + 4] || "",
+            schedule: {
+              morning: (tokens[i + 5] || '0').replace(',', '.'),
+              noon: (tokens[i + 6] || '0').replace(',', '.'),
+              evening: (tokens[i + 7] || '0').replace(',', '.'),
+              night: (tokens[i + 8] || '0').replace(',', '.'),
+            }
+          }));
+          added++;
+          i += 8;
         }
       }
-    }
-    // 3. Einfacher Text
-    else if (cleanText.length > 2 && cleanText.length < 100) {
-      meds.push({
-        id: "med_" + Date.now(),
-        name: cleanText,
-        pzn: "",
-        dose: "Bitte ergänzen",
-        form: "Bitte ergänzen",
-        schedule: { morning: 0, noon: 0, evening: 0, night: 0 },
-        time: "Bitte Einnahmezeiten angeben",
-        note: "Über QR-Code importiert"
-      });
-      added++;
+      if (added > 0) {
+        commitScannedMedications(meds);
+        if (typeof showToast === 'function') showToast(`${added} Medikamente importiert`);
+        return;
+      }
     }
 
-    if (added > 0) {
-      if (typeof saveMeds === 'function') saveMeds(meds);
-      if (typeof renderMedList === 'function') renderMedList();
-      if (typeof showToast === 'function') showToast(added + " Medikament(e) importiert");
+    // 2. VERSUCH: PZN Erkennung (Wenn es nur eine Zahlenfolge ist)
+    const isPZN = /^\d{7,10}$/.test(text.trim());
+    if (isPZN) {
+      const pznClean = text.trim();
+      if (typeof showToast === 'function') showToast("Suche Medikament in Datenbank...");
+
+      const mockMedicationDB = {
+        "1234567": { name: "Ibuprofen 400mg", form: "Tablette", hersteller: "Beispiel GmbH" },
+        "9876543": { name: "Paracetamol 500mg", form: "Kapsel", hersteller: "Apotheken-Direkt" },
+        "5556667": { name: "Diclofenac Gel", form: "Gel", hersteller: "Schmerzfrei AG" }
+      };
+
+      const mockFetch = pzn => new Promise(resolve => {
+        setTimeout(() => resolve(mockMedicationDB[pzn] || null), 500);
+      });
+
+      mockFetch(pznClean).then(data => {
+        if (data) {
+          meds.push(buildScannedMedication({
+            pzn: pznClean,
+            name: data.name,
+            dose: 'Bitte ergänzen',
+            form: data.form || 'Bitte ergänzen',
+            note: 'Automatisch über PZN geladen' + (data.hersteller ? ` (${data.hersteller})` : '')
+          }));
+          commitScannedMedications(meds);
+          if (typeof showToast === 'function') showToast("Medikament erfolgreich geladen!");
+        } else {
+          meds.push(buildScannedMedication({
+            pzn: pznClean,
+            name: `Unbekanntes Medikament (PZN: ${pznClean})`,
+            dose: 'Bitte ergänzen',
+            form: 'Bitte ergänzen',
+            note: 'PZN nicht in Datenbank gefunden'
+          }));
+          commitScannedMedications(meds);
+          if (typeof showToast === 'function') showToast("PZN nicht gefunden.");
+        }
+      }).catch(err => {
+        console.error("Fehler beim Abrufen der Daten:", err);
+        meds.push(buildScannedMedication({
+          pzn: pznClean,
+          name: `Fehler beim Laden (PZN: ${pznClean})`,
+          dose: 'Bitte ergänzen',
+          form: 'Bitte ergänzen',
+          note: 'Fehler beim Datenabruf'
+        }));
+        commitScannedMedications(meds);
+      });
       return;
     }
 
-    if (typeof showToast === 'function') showToast("Kein Medikamenten-Code erkannt");
+    // 3. VERSUCH: JSON oder einfacher Text
+    try {
+      const obj = JSON.parse(text);
+      if (obj.name) {
+        meds.push(buildScannedMedication(obj));
+      } else {
+        meds.push(buildScannedMedication({ name: text.substring(0, 30), note: 'Scan-Import' }));
+      }
+    } catch (e) {
+      meds.push(buildScannedMedication({ name: text.substring(0, 30), note: 'Scan-Import' }));
+    }
 
+    commitScannedMedications(meds);
   } catch (err) {
     console.error("Parsing Error:", err);
-    if (typeof showToast === 'function') showToast("Fehler beim Verarbeiten des Codes");
   }
-}
+} // <-- Schließt die Funktion parseMedicationPlan
 
-// Event Listener
-document.addEventListener('DOMContentLoaded', function() {
-  const containerElem = document.getElementById("scanner-video-container");
-  if (containerElem) {
-    containerElem.style.display = "none";
-  }
+// Event Listener für die Buttons aktivieren
+function initScannerButtons() {
+  setScannerUiState(false);
 
   const startBtn = document.getElementById("startScanBtn");
   if (startBtn) {
-    startBtn.addEventListener("click", startQRScanner);
+    startBtn.onclick = startQRScanner;
   }
 
   const stopBtn = document.getElementById("stopScanBtn");
   if (stopBtn) {
-    stopBtn.addEventListener("click", stopQRScanner);
+    stopBtn.onclick = stopQRScanner;
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initScannerButtons);
+} else {
+  initScannerButtons();
+}

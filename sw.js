@@ -1,9 +1,10 @@
 // ── Service Worker – Schmerz & RLS Tagebuch ──
-const CACHE_NAME = 'schmerztagebuch-v4';
+const CACHE_NAME = 'schmerztagebuch-v5';
 const ASSETS = [
   './',
   './index.html',
   './app.js',
+  './meds.js',
   './bloodpressure.js',
   './charts.js',
   './diary.js',

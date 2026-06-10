@@ -236,7 +236,9 @@ function renderMedEffectInsights() {
       const p = dailyAvgPain(e);
       const r = dailyAvgRls(e);
       if (p === null && r === null) return;
-      const taken = (e.medsTaken || []).includes(id);
+      const taken = typeof isMedicationTaken === 'function'
+        ? isMedicationTaken(e, id)
+        : (e.medsTaken || []).includes(id);
       if (taken) {
         if (p !== null) withVals.pain.push(p);
         if (r !== null) withVals.rls.push(r);
@@ -286,17 +288,24 @@ function renderAnalysisTab() {
   }
 
   // Pain & RLS peak time
-  const timeAvgPain = [0,0,0,0], timeAvgRls = [0,0,0,0], timeCnt = [0,0,0,0];
+  const timeAvgPain = [0,0,0,0], timeAvgRls = [0,0,0,0];
+  const painCnt = [0,0,0,0], rlsCnt = [0,0,0,0];
   dates.forEach(d => {
     const e = store[d];
     TIMES.forEach((t, i) => {
-      if (e[`${t.key}_pain`] !== undefined) { timeAvgPain[i] += e[`${t.key}_pain`]; timeCnt[i]++; }
-      if (e[`${t.key}_rls`]  !== undefined) { timeAvgRls[i]  += e[`${t.key}_rls`]; }
+      if (e[`${t.key}_pain`] !== undefined) {
+        timeAvgPain[i] += e[`${t.key}_pain`];
+        painCnt[i]++;
+      }
+      if (e[`${t.key}_rls`] !== undefined) {
+        timeAvgRls[i] += e[`${t.key}_rls`];
+        rlsCnt[i]++;
+      }
     });
   });
 
-  const painAvgs = timeAvgPain.map((v, i) => timeCnt[i] ? v / timeCnt[i] : 0);
-  const rlsAvgs  = timeAvgRls.map((v, i)  => timeCnt[i] ? v / timeCnt[i] : 0);
+  const painAvgs = timeAvgPain.map((v, i) => painCnt[i] ? v / painCnt[i] : 0);
+  const rlsAvgs  = timeAvgRls.map((v, i)  => rlsCnt[i] ? v / rlsCnt[i] : 0);
   const maxPainIdx = painAvgs.indexOf(Math.max(...painAvgs));
   const maxRlsIdx  = rlsAvgs.indexOf(Math.max(...rlsAvgs));
 
@@ -408,7 +417,7 @@ function renderCharts() {
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const str = d.toISOString().split('T')[0];
+    const str = formatLocalDate(d);
     const entry = store[str];
 
     let lbl;
@@ -504,22 +513,29 @@ function renderCharts() {
   const todLabels = ['Morgen', 'Mittag', 'Abend', 'Nacht'];
   const todPain = [0,0,0,0];
   const todRls  = [0,0,0,0];
-  const todCount = [0,0,0,0];
+  const todPainCount = [0,0,0,0];
+  const todRlsCount = [0,0,0,0];
 
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const str = d.toISOString().split('T')[0];
+    const str = formatLocalDate(d);
     const entry = store[str];
     if (!entry) continue;
     TIMES.forEach((t, idx) => {
-      if (entry[`${t.key}_pain`] !== undefined) { todPain[idx] += entry[`${t.key}_pain`]; todCount[idx]++; }
-      if (entry[`${t.key}_rls`]  !== undefined) { todRls[idx]  += entry[`${t.key}_rls`]; }
+      if (entry[`${t.key}_pain`] !== undefined) {
+        todPain[idx] += entry[`${t.key}_pain`];
+        todPainCount[idx]++;
+      }
+      if (entry[`${t.key}_rls`] !== undefined) {
+        todRls[idx] += entry[`${t.key}_rls`];
+        todRlsCount[idx]++;
+      }
     });
   }
 
-  const todPainAvg = todPain.map((v, i) => todCount[i] ? +(v/todCount[i]).toFixed(1) : 0);
-  const todRlsAvg  = todRls.map((v, i)  => todCount[i] ? +(v/todCount[i]).toFixed(1) : 0);
+  const todPainAvg = todPain.map((v, i) => todPainCount[i] ? +(v / todPainCount[i]).toFixed(1) : 0);
+  const todRlsAvg  = todRls.map((v, i)  => todRlsCount[i] ? +(v / todRlsCount[i]).toFixed(1) : 0);
 
   const ctx2 = document.getElementById('todChart').getContext('2d');
   if (todChartInstance) todChartInstance.destroy();

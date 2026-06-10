@@ -26,7 +26,7 @@
 <!-- HEADER -->
   <header class="header">
     <div class="header-brand">
-      <img src="icons/Logo SymptoChron-2.png" alt="Logo" style="width: 100px; height: auto; margin-right: 10px;">
+      <img src="icons/icon-192.png" alt="Logo" onerror="this.style.display='none'" style="width: 100px; height: auto; margin-right: 10px; border-radius: 16px;">
       <div>
         <div class="header-title">SymptoChron</div>
         <div class="header-subtitle">Schmerz, RLS, Schlaf & Medikation</div>
@@ -382,14 +382,14 @@
       </div>
 	<!-- Scanner Bereich -->
 <div style="margin: 15px; padding: 15px; border: 1px solid var(--border, #ccc); border-radius: 8px; text-align: center;">
-    <button id="startScanBtn" style="padding: 10px 20px; background-color: #2ecc71; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+    <button id="startScanBtn" type="button" onclick="startQRScanner()" style="padding: 10px 20px; background-color: #2ecc71; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
         📷 QR-Code scannen (BMP)
     </button>
     
     <!-- Der Container ist jetzt komplett flexibel, damit die Bibliothek die Kontrolle hat -->
     <div id="scanner-video-container" style="display: none; margin: 15px auto 0 auto; width: 100%; max-width: 450px;"></div>
     
-    <button id="stopScanBtn" style="display: none; margin-top: 15px; padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+    <button id="stopScanBtn" type="button" onclick="stopQRScanner()" style="display: none; margin-top: 15px; padding: 10px 20px; background-color: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
         Stoppen
     </button>
 
@@ -625,34 +625,6 @@
     </div>
   </div>
 
-<div class="card" style="margin-top: 15px;">
-    <div class="card-header">
-      <div class="card-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">🔍</div>
-      <div>
-        <div class="card-title">Einträge durchsuchen</div>
-        <div class="card-subtitle">Finde schnell bestimmte Notizen, Symptome oder Medikamenten-Einträge</div>
-      </div>
-    </div>
-    
-    <div style="margin-top: 15px;">
-      <input type="search" class="form-input" id="appSearchInput" placeholder="Stichwort eingeben (z.B. Kopfschmerz, Ibuprofen, Kaffee)..." oninput="filterDiaryEntries(this.value)">
-    </div>
-    
-    <div id="appSearchResults" style="margin-top: 15px; display: none; max-height: 300px; overflow-y: auto;">
-      <table class="rls-table">
-        <thead>
-          <tr>
-            <th>Datum</th>
-            <th>Typ/Bereich</th>
-            <th>Gefundener Inhalt</th>
-          </tr>
-        </thead>
-        <tbody id="appSearchResultsBody">
-          </tbody>
-      </table>
-    </div>
-  </div>
-
   <div class="card" style="margin-top: 15px;">
     <div class="card-header">
       <div class="card-icon" style="background: rgba(0,212,170,0.15); color: var(--accent-2);">📤</div>
@@ -705,7 +677,7 @@
 <!-- MEDICATION MODAL -->
 <div class="modal-overlay" id="medModal">
   <div class="modal">
-    <div class="modal-title">💊 Medikament hinzufügen</div>
+    <div class="modal-title" id="medModalTitle">💊 Medikament hinzufügen</div>
     <div class="form-grid">
       <div class="form-group full">
         <label class="form-label">Medikamentenname *</label>
@@ -761,7 +733,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeMedModal()">Abbrechen</button>
-      <button class="btn-primary" onclick="saveMedication()">Speichern</button>
+      <button class="btn-primary" id="medModalSaveBtn" onclick="saveMedication()">Speichern</button>
     </div>
   </div>
 </div>
@@ -770,6 +742,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="app.js"></script>
+<script src="meds.js"></script>
 <script src="diary.js"></script>
 <script src="rls.js"></script>
 <script src="bloodpressure.js"></script>
@@ -777,5 +750,5 @@
 <script src="export.js"></script>
 <script src="patient.js"></script>
 <script src="scanner.js"></script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a0989028cd279970',t:'MTc4MTA5NjQ2OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

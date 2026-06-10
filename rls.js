@@ -147,11 +147,8 @@ function applyRlsVisibility() {
   const wdGroup = document.getElementById('surveyWeekdayGroup');
   const mode = getRlsMode();
 
-  if (daily) daily.style.display = mode === 'weekly_only' ? 'none' : 'block';
-  if (survey) {
-    survey.style.display = (mode === 'detailed_only' || (mode === 'auto' && getActivePreVisitPeriod()))
-      ? 'none' : 'block';
-  }
+  if (daily) daily.style.display = shouldShowDetailedRls() ? 'block' : 'none';
+  if (survey) survey.style.display = shouldShowWeeklySurvey() ? 'block' : 'none';
   if (wdGroup) wdGroup.style.display = mode === 'detailed_only' ? 'none' : 'block';
 }
 
@@ -394,124 +391,4 @@ function updateRlsBanners() {
   applyRlsVisibility();
 }
 
-// ── RxNav drug interactions ─────────────────────
-async function resolveRxcui(name, pzn) {
-  const term = (name || '').trim();
-  if (!term && !pzn) return null;
-
-  if (pzn && /^\d{7,8}$/.test(pzn)) {
-    try {
-      const r = await fetch(`${RXNAV_BASE}/approximateTerm.json?term=${encodeURIComponent(pzn)}&maxEntries=3`);
-      const j = await r.json();
-      const cand = j?.approximateGroup?.candidate;
-      if (cand) {
-        const list = Array.isArray(cand) ? cand : [cand];
-        const rx = list.find(c => c.rxcui) || list[0];
-        if (rx?.rxcui) return rx.rxcui;
-      }
-    } catch { /* fallback to name */ }
-  }
-
-  try {
-    const r = await fetch(`${RXNAV_BASE}/drugs.json?name=${encodeURIComponent(term)}`);
-    const j = await r.json();
-    const groups = j?.drugGroup?.conceptGroup;
-    if (!groups) return null;
-    const arr = Array.isArray(groups) ? groups : [groups];
-    for (const g of arr) {
-      const props = g?.conceptProperties;
-      if (!props) continue;
-      const list = Array.isArray(props) ? props : [props];
-      const inPin = list.find(p => p.tty === 'IN' || p.tty === 'PIN');
-      if (inPin?.rxcui) return inPin.rxcui;
-      if (list[0]?.rxcui) return list[0].rxcui;
-    }
-  } catch { /* offline */ }
-
-  try {
-    const r = await fetch(`${RXNAV_BASE}/approximateTerm.json?term=${encodeURIComponent(term)}&maxEntries=1`);
-    const j = await r.json();
-    const c = j?.approximateGroup?.candidate;
-    const one = Array.isArray(c) ? c[0] : c;
-    return one?.rxcui || null;
-  } catch {
-    return null;
-  }
-}
-
-async function checkDrugInteractions() {
-  const meds = getMeds();
-  const box = document.getElementById('interactionResults');
-  const btn = document.getElementById('btnCheckInteractions');
-
-  if (meds.length < 2) {
-    showToast('⚠️ Mindestens 2 Medikamente für Wechselwirkungsprüfung');
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = '⏳ Prüfe…';
-  box.style.display = 'block';
-  const local = findLocalInteractions(meds);
-  let localHtml = '';
-  if (local.length) {
-    localHtml += '<p style="font-size:12px;font-weight:600;color:var(--accent-pain);margin-bottom:8px">Offline-Prüfung (gängige Kombinationen):</p>';
-    local.forEach(w => {
-      localHtml += `<div class="interaction-item severity-high"><strong>🔴 ${escHtml(w.medA)} + ${escHtml(w.medB)}</strong><br>${escHtml(w.msg)}</div>`;
-    });
-    localHtml += '<hr style="border:none;border-top:1px solid var(--border);margin:12px 0">';
-  }
-  box.innerHTML = localHtml + '<p style="font-size:12px;color:var(--text-2)">RxNorm Online-Prüfung…</p>';
-
-  const resolved = [];
-  for (const m of meds) {
-    const rxcui = await resolveRxcui(m.name, m.pzn);
-    resolved.push({ ...m, rxcui });
-  }
-
-  const withRxcui = resolved.filter(m => m.rxcui);
-  if (withRxcui.length < 2) {
-    box.innerHTML = localHtml + `<p style="color:var(--accent-pain);font-size:12px">Nur ${withRxcui.length} von ${meds.length} Medikamenten in RxNorm gefunden. Bitte Wirkstoffnamen (z.&nbsp;B. „Pramipexol") verwenden.</p>
-      <ul style="margin-top:8px;font-size:11px;color:var(--text-3)">${resolved.map(m => `<li>${escHtml(m.name)}: ${m.rxcui ? 'RxCUI ' + m.rxcui : 'nicht gefunden'}</li>`).join('')}</ul>`;
-    btn.disabled = false;
-    btn.textContent = '🔍 Wechselwirkungen prüfen';
-    return;
-  }
-
-  const rxcuis = withRxcui.map(m => m.rxcui).join('+');
-  try {
-    const r = await fetch(`${RXNAV_BASE}/interaction/list.json?rxcuis=${rxcuis}`);
-    const j = await r.json();
-    const groups = j?.fullInteractionTypeGroup;
-    let rxHtml = `<p style="font-size:11px;color:var(--text-3);margin-bottom:10px">RxNorm geprüft: ${withRxcui.map(m => escHtml(m.name)).join(', ')}</p>`;
-
-    if (!groups || (Array.isArray(groups) && groups.length === 0)) {
-      rxHtml += '<p style="font-size:13px;color:var(--accent-2)">Keine weiteren Wechselwirkungen in RxNorm gefunden.</p>';
-    } else {
-      const gList = Array.isArray(groups) ? groups : [groups];
-      gList.forEach(g => {
-        const types = g?.fullInteractionType;
-        const tList = Array.isArray(types) ? types : (types ? [types] : []);
-        tList.forEach(t => {
-          const pairs = t?.interactionPair;
-          const pList = Array.isArray(pairs) ? pairs : (pairs ? [pairs] : []);
-          pList.forEach(p => {
-            const desc = p?.description || 'Wechselwirkung';
-            const sev = (p?.severity || '').toLowerCase();
-            const cls = sev.includes('high') ? 'severity-high' : sev.includes('moderate') ? 'severity-moderate' : 'severity-low';
-            rxHtml += `<div class="interaction-item ${cls}"><strong>${escHtml(t?.interactionType || 'Interaktion')}</strong><br>${escHtml(desc)}${p?.severity ? `<br><span style="color:var(--text-3)">Schwere: ${escHtml(p.severity)}</span>` : ''}</div>`;
-          });
-        });
-      });
-    }
-    box.innerHTML = localHtml + rxHtml;
-    showToast('✅ Wechselwirkungsprüfung abgeschlossen');
-  } catch (err) {
-    box.innerHTML = localHtml + `<p style="color:var(--accent-pain);font-size:12px">RxNav nicht erreichbar.${local.length ? ' Offline-Hinweise oben beachten.' : ''}</p>`;
-    showToast('❌ RxNav nicht erreichbar');
-  }
-
-  btn.disabled = false;
-  btn.textContent = '🔍 Wechselwirkungen prüfen';
-}
 
