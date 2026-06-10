@@ -119,7 +119,9 @@ function saveEntry() {
     else delete entry[`${t.key}_rls`];
   });
 
-  entry.notes = document.getElementById('dailyNotes').value.trim();
+  const notes = document.getElementById('dailyNotes').value.trim();
+  if (notes) entry.notes = notes;
+  else delete entry.notes;
 
   const sh = document.getElementById('sleepHours').value;
   const sq = document.getElementById('sleepQuality').value;
@@ -141,9 +143,13 @@ function saveEntry() {
   if (taken.length) entry.medsTaken = taken;
   else delete entry.medsTaken;
 
-  entry.updated = new Date().toISOString();
+  // Only save if there is actual data (not just an empty object)
+  const hasData = TIMES.some(t => entry[`${t.key}_pain`] !== undefined || entry[`${t.key}_rls`] !== undefined)
+    || entry.notes || entry.sleepHours !== undefined || entry.sleepQuality !== undefined
+    || entry.factors || entry.medsTaken;
 
-  if (Object.keys(entry).length > 0) {
+  if (hasData) {
+    entry.updated = new Date().toISOString();
     store[currentDate] = entry;
   } else {
     delete store[currentDate];

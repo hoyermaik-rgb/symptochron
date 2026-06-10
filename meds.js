@@ -198,15 +198,12 @@
     const list = document.getElementById('medIntakeList');
     if (!card || !list) return;
 
-    card.style.display = 'block';
-
     if (!meds.length) {
-      list.innerHTML = `<div style="font-size:12px;color:var(--text-2);line-height:1.6;padding:4px 2px">
-        Noch keine Medikamente im <strong>Medikamente</strong>-Tab angelegt.<br>
-        Sobald dort mindestens ein Medikament gespeichert ist, erscheinen hier die Bestätigungsfelder.
-      </div>`;
+      card.style.display = 'none';
       return;
     }
+
+    card.style.display = 'block';
 
     const checkboxStyle = [
       'appearance:auto !important',
