@@ -32,7 +32,7 @@
     {
       "name": "SOS & Daten",
       "short_name": "SOS",
-      "description": "Notfallkontakte und wichtige Daten öffnen",
+      "description": "Notfallkontakte und wichtige Daten öffnen (funktioniert nur bei installierter App)",
       "url": "./index.html#sos",
       "icons": [
         {
@@ -56,7 +56,7 @@
     {
       "name": "Stimmung erfassen",
       "short_name": "Mood",
-      "description": "Schnell einen Stimmungs-Check-In machen",
+      "description": "Schnell einen Stimmungs-Check-In machen (funktioniert nur bei installierter App)",
       "url": "./index.html#mood",
       "icons": [
         {
