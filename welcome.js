@@ -328,31 +328,109 @@ function isFlexSlotId(slotId) {
 }
 
 function toggleWelcomeMedSlot(slotId) {
-  let taken = getTodayTakenIds().slice();
-  const times = getTodayTakenTimes();
+  const store = getStore();
+  const today = todayStr();
+  const entry = store[today] || {};
+
+  // Aktuelle Einnahmen aus dem Tagebuch lesen
+  let taken = Array.isArray(entry.medsTaken) ? [...entry.medsTaken] : [];
+  let takenTimes = entry.medsTakenTimes ? { ...entry.medsTakenTimes } : {};
+
+  const slots = getTodayMedSlots();
+  const slotInfo = slots.find(s => s.id === slotId);
+
   if (taken.includes(slotId)) {
+    // Entfernen
     taken = taken.filter(id => id !== slotId);
-    delete times[slotId];
+    delete takenTimes[slotId];
   } else {
+    // Hinzufügen
     taken.push(slotId);
-    if (isFlexSlotId(slotId)) times[slotId] = nowHHMM();
+    if (slotInfo && !slotInfo.slot) {
+      takenTimes[slotId] = nowHHMM();
+    }
   }
-  saveTodayTakenIds(taken, times);
+
+  // In das Tagebuch-Objekt schreiben
+  if (taken.length > 0) {
+    entry.medsTaken = taken;
+  } else {
+    delete entry.medsTaken;
+  }
+
+  if (Object.keys(takenTimes).length > 0) {
+    entry.medsTakenTimes = takenTimes;
+  } else {
+    delete entry.medsTakenTimes;
+  }
+
+  entry.updated = new Date().toISOString();
+  store[today] = entry;
+  saveStore(store);
+
+  // UI aktualisieren
   renderWelcomeScreen();
+
+  // Falls das Tagebuch heute geöffnet ist → aktualisieren
+  if (typeof currentDate !== 'undefined' && currentDate === today && typeof refreshDiary === 'function') {
+    refreshDiary();
+  }
+
+  // Charts aktualisieren, falls sichtbar
+  if (document.getElementById('tab-charts')?.classList.contains('active') && typeof renderCharts === 'function') {
+    renderCharts();
+  }
 }
 
 function confirmAllMedsToday() {
+  const store = getStore();
+  const today = todayStr();
+  const entry = store[today] || {};
+
   const slots = getTodayMedSlots();
-  if (!slots.length) return;
-  const taken = getTodayTakenIds().slice();
-  const times = getTodayTakenTimes();
+  let taken = Array.isArray(entry.medsTaken) ? [...entry.medsTaken] : [];
+  let takenTimes = entry.medsTakenTimes ? { ...entry.medsTakenTimes } : {};
+
+  let changed = false;
+
   slots.forEach(s => {
-    if (!isSlotTaken(taken, s.id, s.med.id)) {
+    if (!taken.includes(s.id)) {
       taken.push(s.id);
-      if (!s.slot) times[s.id] = nowHHMM();
+      changed = true;
+
+      // Zeitstempel nur bei Bedarfsmedikamenten setzen
+      if (!s.slot && !takenTimes[s.id]) {
+        takenTimes[s.id] = nowHHMM();
+      }
     }
   });
-  saveTodayTakenIds(taken, times);
+
+  if (!changed) {
+    if (typeof showToast === 'function') showToast('Alle Medikamente sind bereits bestätigt');
+    return;
+  }
+
+  // In das Tagebuch-Objekt schreiben
+  entry.medsTaken = taken;
+  if (Object.keys(takenTimes).length > 0) {
+    entry.medsTakenTimes = takenTimes;
+  }
+
+  entry.updated = new Date().toISOString();
+  store[today] = entry;
+  saveStore(store);
+
   renderWelcomeScreen();
+
+  // Diary-Ansicht aktualisieren (falls heute offen)
+  if (typeof currentDate !== 'undefined' && currentDate === today && typeof refreshDiary === 'function') {
+    refreshDiary();
+  }
+
+  // Charts aktualisieren
+  if (document.getElementById('tab-charts')?.classList.contains('active') && typeof renderCharts === 'function') {
+    renderCharts();
+  }
+
   if (typeof showToast === 'function') showToast('✅ Alle Einnahmen für heute bestätigt');
 }
