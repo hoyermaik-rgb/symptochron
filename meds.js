@@ -164,13 +164,14 @@
     const store = typeof getStore === 'function' ? getStore() : {};
     const dateKey = typeof currentDate !== 'undefined' ? currentDate : todayStr();
     const entry = store[dateKey] || {};
-    renderMedIntakeForDiary(entry.medsTaken || []);
+    renderMedIntakeForDiary(entry.medsTaken || [], entry.medsTakenTimes || {});
   }
 
   function refreshMedicationUi() {
     renderMedList();
     refreshMedInteractionAlert();
     refreshDiaryMedicationIntake();
+    if (typeof window.renderWelcomeScreen === 'function') window.renderWelcomeScreen();
   }
 
   function setMedicationModalMode(mode) {
@@ -192,11 +193,32 @@
     document.getElementById('medNight').value = med.schedule?.night || '';
   }
 
-  function renderMedIntakeForDiary(takenIds) {
+  // Kompakte Chip-Darstellung: 1 Antippen = Einnahme bestätigt
+  function buildMedIntakeChip(med, slotId, checked, qtyLabel, opts) {
+    const isFlex = !!(opts && opts.flex);
+    const time = opts && opts.time ? opts.time : '';
+    const timeLabel = isFlex && checked && time ? ` · 🕐 ${escHtml(time)}` : '';
+    return `<label class="med-chip ${checked ? 'taken' : ''}">
+      <input type="checkbox" data-med-intake="${slotId}" ${isFlex ? 'data-flex="1"' : ''} ${time ? `data-taken-time="${escHtml(time)}"` : ''} ${checked ? 'checked' : ''} onchange="onMedIntakeToggle(this)" />
+      <span class="med-chip-check">${checked ? '✓' : ''}</span>
+      <span class="med-chip-body">
+        <span class="med-chip-name">${escHtml(med.name)}</span>
+        <span class="med-chip-dose">${qtyLabel}${med.dose ? ' · ' + escHtml(med.dose) : ''}<span class="med-chip-time">${timeLabel}</span></span>
+      </span>
+    </label>`;
+  }
+
+  function currentTimeHHMM() {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  }
+
+  function renderMedIntakeForDiary(takenIds, takenTimes) {
     const meds = getMeds();
     const card = document.getElementById('medIntakeCard');
     const list = document.getElementById('medIntakeList');
     if (!card || !list) return;
+    const times = takenTimes || {};
 
     if (!meds.length) {
       card.style.display = 'none';
@@ -205,105 +227,90 @@
 
     card.style.display = 'block';
 
-    const checkboxStyle = [
-      'appearance:auto !important',
-      '-webkit-appearance:checkbox !important',
-      'display:inline-block !important',
-      'visibility:visible !important',
-      'opacity:1 !important',
-      'position:static !important',
-      'pointer-events:auto !important',
-      'width:18px',
-      'height:18px',
-      'margin:0',
-      'padding:0',
-      'accent-color:var(--accent-2,#00d4aa)',
-      'cursor:pointer',
-      'vertical-align:middle'
-    ].join(';');
-
     const groupsHtml = MED_TIME_SLOTS.map(slot => {
-      const rows = meds.map(m => {
+      const chips = meds.map(m => {
         const sched = emptySchedule(m.schedule);
         if (!(sched[slot.key] > 0)) return '';
         const slotId = `${m.id}_${slot.key}`;
         const checked = takenIds.includes(slotId) || takenIds.includes(m.id);
-        return `<tr class="med-intake-table-row ${checked ? 'checked' : ''}">
-          <td>
-            <input type="checkbox" data-med-intake="${slotId}" ${checked ? 'checked' : ''} style="${checkboxStyle}"
-              onchange="this.closest('tr').classList.toggle('checked', this.checked)" />
-          </td>
-          <td>${escHtml(m.name)}${m.form ? `<div class="med-intake-sub">${escHtml(m.form)}</div>` : ''}</td>
-          <td>${escHtml(m.dose || '–')}</td>
-          <td><span class="med-qty-pill">${sched[slot.key]}×</span></td>
-        </tr>`;
+        return buildMedIntakeChip(m, slotId, checked, `${sched[slot.key]}×`);
       }).filter(Boolean).join('');
 
-      if (!rows) return '';
-      return `<div class="med-intake-group">
-        <div class="med-intake-group-head">
-          <div class="med-intake-group-title">${slot.icon} ${slot.label}</div>
-          <div class="med-intake-group-actions">
-            <button type="button" class="med-quick-btn" onclick="toggleMedicationTimeGroup('${slot.key}', true)">alle</button>
-            <button type="button" class="med-quick-btn" onclick="toggleMedicationTimeGroup('${slot.key}', false)">keine</button>
-          </div>
-        </div>
-        <div class="med-intake-table-wrap">
-          <table class="med-intake-table">
-            <thead>
-              <tr>
-                <th>✓</th>
-                <th>Medikament</th>
-                <th>Dosis</th>
-                <th>Menge</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
+      if (!chips) return '';
+      return `<div class="med-slot-row">
+        <div class="med-slot-label" style="color:var(--${slot.key === 'morning' ? 'morning' : slot.key === 'noon' ? 'noon' : slot.key === 'evening' ? 'evening' : 'night'})">${slot.icon} ${slot.label}</div>
+        <div class="med-chip-row">${chips}</div>
       </div>`;
     }).filter(Boolean).join('');
 
-    const unscheduledRows = meds.map(m => {
+    const unscheduledChips = meds.map(m => {
       const sched = emptySchedule(m.schedule);
       if (Object.values(sched).some(v => v > 0)) return '';
       const checked = takenIds.includes(m.id);
-      return `<tr class="med-intake-table-row ${checked ? 'checked' : ''}">
-        <td>
-          <input type="checkbox" data-med-intake="${m.id}" ${checked ? 'checked' : ''} style="${checkboxStyle}"
-            onchange="this.closest('tr').classList.toggle('checked', this.checked)" />
-        </td>
-        <td>${escHtml(m.name)}${m.form ? `<div class="med-intake-sub">${escHtml(m.form)}</div>` : ''}</td>
-        <td>${escHtml(m.dose || '–')}</td>
-        <td><span class="med-qty-pill">flex</span></td>
-      </tr>`;
+      return buildMedIntakeChip(m, m.id, checked, 'bei Bedarf', { flex: true, time: times[m.id] || '' });
     }).filter(Boolean).join('');
 
-    list.innerHTML = groupsHtml + (unscheduledRows ? `<div class="med-intake-group">
-      <div class="med-intake-group-head">
-        <div class="med-intake-group-title">📌 Ohne feste Tageszeit</div>
-      </div>
-      <div class="med-intake-table-wrap">
-        <table class="med-intake-table">
-          <thead>
-            <tr>
-              <th>✓</th>
-              <th>Medikament</th>
-              <th>Dosis</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>${unscheduledRows}</tbody>
-        </table>
-      </div>
+    list.innerHTML = groupsHtml + (unscheduledChips ? `<div class="med-slot-row">
+      <div class="med-slot-label">📌 Bei Bedarf</div>
+      <div class="med-chip-row">${unscheduledChips}</div>
     </div>` : '');
+
+    updateMedIntakeProgress();
+  }
+
+  function onMedIntakeToggle(cb) {
+    const chip = cb.closest('.med-chip');
+    // Bedarfsmedikation: Uhrzeit der Einnahme automatisch festhalten
+    if (cb.dataset.flex === '1') {
+      if (cb.checked && !cb.dataset.takenTime) {
+        cb.dataset.takenTime = currentTimeHHMM();
+      } else if (!cb.checked) {
+        delete cb.dataset.takenTime;
+      }
+    }
+    if (chip) {
+      chip.classList.toggle('taken', cb.checked);
+      const check = chip.querySelector('.med-chip-check');
+      if (check) check.textContent = cb.checked ? '✓' : '';
+      const timeEl = chip.querySelector('.med-chip-time');
+      if (timeEl) {
+        timeEl.textContent = cb.checked && cb.dataset.takenTime ? ` · 🕐 ${cb.dataset.takenTime}` : '';
+      }
+    }
+    updateMedIntakeProgress();
+  }
+
+  function updateMedIntakeProgress() {
+    const list = document.getElementById('medIntakeList');
+    const fill = document.getElementById('medIntakeProgressFill');
+    const text = document.getElementById('medIntakeProgressText');
+    if (!list) return;
+    const all = list.querySelectorAll('[data-med-intake]');
+    const done = list.querySelectorAll('[data-med-intake]:checked');
+    const pct = all.length ? Math.round((done.length / all.length) * 100) : 0;
+    if (fill) {
+      fill.style.width = pct + '%';
+      fill.classList.toggle('complete', pct === 100 && all.length > 0);
+    }
+    if (text) text.textContent = `${done.length} / ${all.length}`;
+  }
+
+  function setAllMedIntake(checked) {
+    const list = document.getElementById('medIntakeList');
+    if (!list) return;
+    list.querySelectorAll('[data-med-intake]').forEach(cb => {
+      cb.checked = checked;
+      onMedIntakeToggle(cb);
+    });
+    if (typeof showToast === 'function') {
+      showToast(checked ? '✅ Alle Einnahmen markiert – nicht vergessen zu speichern' : 'Einnahmen zurückgesetzt');
+    }
   }
 
   function toggleMedicationTimeGroup(slotKey, checked) {
     document.querySelectorAll(`[data-med-intake$="_${slotKey}"]`).forEach(cb => {
       cb.checked = checked;
-      const row = cb.closest('tr');
-      if (row) row.classList.toggle('checked', checked);
+      onMedIntakeToggle(cb);
     });
   }
 
@@ -313,6 +320,15 @@
       taken.push(cb.dataset.medIntake);
     });
     return taken;
+  }
+
+  // Uhrzeiten der Bedarfsmedikation aus dem DOM einsammeln
+  function collectMedicationIntakeTimesFromDom() {
+    const times = {};
+    document.querySelectorAll('[data-med-intake][data-flex="1"]:checked').forEach(cb => {
+      if (cb.dataset.takenTime) times[cb.dataset.medIntake] = cb.dataset.takenTime;
+    });
+    return times;
   }
 
   function isMedicationTaken(entry, medId) {
@@ -676,7 +692,11 @@
     medNameMatches,
     findLocalInteractions,
     renderMedIntakeForDiary,
+    onMedIntakeToggle,
+    updateMedIntakeProgress,
+    setAllMedIntake,
     collectMedicationIntakeFromDom,
+    collectMedicationIntakeTimesFromDom,
     isMedicationTaken,
     getMedicationTakenSlots,
     toggleMedicationTimeGroup,

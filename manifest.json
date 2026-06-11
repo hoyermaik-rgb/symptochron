@@ -27,5 +27,43 @@
       "purpose": "any"
     }
   ],
-  "categories": ["health", "medical", "productivity"]
+  "categories": ["health", "medical", "productivity"],
+  "shortcuts": [
+    {
+      "name": "SOS & Daten",
+      "short_name": "SOS",
+      "description": "Notfallkontakte und wichtige Daten öffnen",
+      "url": "./index.html#sos",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Notruf 112",
+      "short_name": "Notruf",
+      "description": "Sofort den Notruf wählen",
+      "url": "tel:112",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Stimmung erfassen",
+      "short_name": "Mood",
+      "description": "Schnell einen Stimmungs-Check-In machen",
+      "url": "./index.html#mood",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
 }

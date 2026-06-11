@@ -103,6 +103,58 @@ function renderCorrelations() {
         return { xs, ys, n: xs.length };
       },
     },
+    // ── Mood-Korrelationen (wenn Mood-Daten vorhanden) ──
+    ...(typeof getMoodStore === 'function' && typeof getMoodAverageForDate === 'function' ? [
+      {
+        label: 'Ø Schmerz ↔ Stimmung',
+        get: () => {
+          const moodStore = getMoodStore();
+          const xs = [], ys = [];
+          Object.keys(store).sort().forEach(d => {
+            const p = dailyAvgPain(store[d]);
+            const m = getMoodAverageForDate(d);
+            if (p !== null && m !== null) {
+              xs.push(p);
+              ys.push(m);
+            }
+          });
+          return { xs, ys, n: xs.length };
+        },
+      },
+      {
+        label: 'Ø RLS ↔ Stimmung',
+        get: () => {
+          const moodStore = getMoodStore();
+          const xs = [], ys = [];
+          Object.keys(store).sort().forEach(d => {
+            const r = dailyAvgRls(store[d]);
+            const m = getMoodAverageForDate(d);
+            if (r !== null && m !== null) {
+              xs.push(r);
+              ys.push(m);
+            }
+          });
+          return { xs, ys, n: xs.length };
+        },
+      },
+      {
+        label: 'Schlafqualität ↔ Stimmung',
+        get: () => {
+          const moodStore = getMoodStore();
+          const xs = [], ys = [];
+          Object.keys(store).sort().forEach(d => {
+            const e = store[d];
+            const s = e.sleepQuality;
+            const m = getMoodAverageForDate(d);
+            if (s !== undefined && m !== null) {
+              xs.push(s);
+              ys.push(m);
+            }
+          });
+          return { xs, ys, n: xs.length };
+        },
+      },
+    ] : []),
   ];
 
   if (typeof getBloodPressureDailyAverages === 'function') {

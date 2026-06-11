@@ -1356,6 +1356,97 @@ canvas#mainChart { width: 100% !important; max-height: 280px; }
   font-size: 14px;
 }
 
+/* ── MOOD TAB STYLES ───────────────────────────── */
+.mood-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.mood-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mood-label {
+  width: 130px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.mood-select {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.mood-select:focus {
+  outline: none;
+  border-color: var(--accent-rls);
+}
+
+.mood-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  flex-shrink: 0;
+  background: rgba(167,139,250,0.12);
+  color: #a78bfa;
+  border: 1px solid rgba(167,139,250,0.25);
+  transition: all 0.2s;
+}
+
+.symptom-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.symptom-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 13px;
+}
+
+.symptom-chip input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-rls);
+}
+
+.symptom-chip:hover {
+  border-color: var(--accent-rls);
+  background: rgba(167,139,250,0.06);
+}
+
+.symptom-chip input:checked + span {
+  color: var(--accent-rls);
+  font-weight: 500;
+}
+
 /* Better cards */
 .card {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -1458,4 +1549,588 @@ canvas#mainChart { width: 100% !important; max-height: 280px; }
 /* Chart wrap */
 .chart-wrap {
   border-radius: 14px;
+}
+
+/* ══════════════════════════════════════════════════
+   WILLKOMMENSBILDSCHIRM (Start-Tab)
+   ══════════════════════════════════════════════════ */
+.welcome-hero {
+  background: linear-gradient(135deg, rgba(59,158,255,0.12), rgba(0,212,170,0.08)), var(--bg-card);
+  border: 1px solid rgba(59,158,255,0.25);
+  text-align: left;
+  padding: 24px 20px;
+}
+.welcome-greeting {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text-1);
+}
+.welcome-date {
+  font-size: 13px;
+  color: var(--accent-1);
+  font-family: var(--mono);
+  margin-top: 4px;
+}
+.welcome-sub {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-top: 10px;
+  line-height: 1.6;
+}
+
+.welcome-status-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 420px) {
+  .welcome-status-grid { grid-template-columns: 1fr; }
+}
+.welcome-status-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.welcome-status-card:hover {
+  border-color: var(--accent-1);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+.welcome-status-card.done {
+  border-color: rgba(0,212,170,0.4);
+  background: linear-gradient(135deg, rgba(0,212,170,0.08), transparent), var(--bg-card);
+}
+.welcome-status-card .ws-icon { font-size: 26px; margin-bottom: 8px; }
+.welcome-status-card .ws-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-3);
+  font-weight: 600;
+}
+.welcome-status-card .ws-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-1);
+  margin-top: 4px;
+}
+.welcome-status-card .ws-action {
+  font-size: 12px;
+  color: var(--accent-1);
+  margin-top: 8px;
+  font-weight: 500;
+}
+.ws-progress {
+  margin-top: 10px;
+  height: 6px;
+  border-radius: 4px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.ws-progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  transition: width 0.35s ease;
+}
+.ws-progress-fill.complete { background: var(--accent-2); }
+
+.welcome-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+@media (max-width: 480px) {
+  .welcome-quick-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.welcome-quick-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--text-2);
+  padding: 16px 8px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.welcome-quick-btn:hover {
+  border-color: var(--accent-1);
+  color: var(--text-1);
+  transform: translateY(-2px);
+}
+.welcome-quick-btn .wq-icon { font-size: 24px; }
+
+/* ══════════════════════════════════════════════════
+   MEDIKAMENTEN-EINNAHME – kompakte Chips
+   ══════════════════════════════════════════════════ */
+.med-slot-row {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.med-slot-row:last-child { border-bottom: none; }
+.med-slot-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+.med-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.med-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 9px 14px 9px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: var(--font);
+  text-align: left;
+  color: var(--text-1);
+}
+.med-chip:hover { border-color: var(--accent-2); }
+.med-chip input { display: none; }
+.med-chip-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 2px solid var(--border-lg);
+  background: var(--bg-card2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #04110c;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.med-chip-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.med-chip-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.med-chip-dose {
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--mono);
+}
+.med-chip.taken {
+  background: rgba(0,212,170,0.1);
+  border-color: rgba(0,212,170,0.45);
+}
+.med-chip.taken .med-chip-check {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+}
+.med-chip.taken .med-chip-name { color: var(--accent-2); }
+.med-chip.taken .med-chip-dose { color: rgba(0,212,170,0.7); }
+
+.welcome-med-chip { width: 100%; }
+@media (min-width: 560px) {
+  .welcome-med-chip { width: calc(50% - 4px); }
+}
+#welcomeMedQuickList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Fortschrittsbalken Medikamenten-Einnahme im Tagebuch */
+.med-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.med-progress-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 5px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.med-progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  transition: width 0.3s ease;
+}
+.med-progress-fill.complete { background: var(--accent-2); }
+.med-progress-text {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.med-intake-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.med-intake-actions .btn-secondary { flex: 1; }
+
+/* ══════════════════════════════════════════════════
+   TAGEBUCH – Schritt-Nummern für klare Struktur
+   ══════════════════════════════════════════════════ */
+.step-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(59,158,255,0.15);
+  border: 1px solid rgba(59,158,255,0.35);
+  color: var(--accent-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.diary-step .card-header { align-items: flex-start; }
+.diary-step .card-header .step-badge { margin-top: 1px; }
+
+/* ══════════════════════════════════════════════════
+   SCANNER-OVERLAY – roter Laser-Streifen
+   ══════════════════════════════════════════════════ */
+.scan-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.scan-frame {
+  position: relative;
+  width: min(64%, 260px);
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  /* Abdunkelung außerhalb des Scan-Rahmens */
+  box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.45);
+  border-radius: 14px;
+}
+.scan-corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 3px solid var(--accent-1);
+}
+.scan-corner.tl { top: 0;    left: 0;  border-right: none;  border-bottom: none; border-top-left-radius: 12px; }
+.scan-corner.tr { top: 0;    right: 0; border-left: none;   border-bottom: none; border-top-right-radius: 12px; }
+.scan-corner.bl { bottom: 0; left: 0;  border-right: none;  border-top: none;    border-bottom-left-radius: 12px; }
+.scan-corner.br { bottom: 0; right: 0; border-left: none;   border-top: none;    border-bottom-right-radius: 12px; }
+
+/* Der rote Laser-Streifen */
+.scan-laser {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 0;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255, 45, 45, 0.25) 12%,
+    #ff2d2d 50%,
+    rgba(255, 45, 45, 0.25) 88%,
+    transparent 100%);
+  box-shadow:
+    0 0 8px 2px rgba(255, 45, 45, 0.75),
+    0 0 22px 6px rgba(255, 45, 45, 0.35);
+  animation: laserSweep 2.2s ease-in-out infinite;
+}
+@keyframes laserSweep {
+  0%   { top: 4%;  opacity: 0.35; }
+  8%   { opacity: 1; }
+  46%  { top: 94%; opacity: 1; }
+  50%  { top: 94%; opacity: 0.35; }
+  58%  { opacity: 1; }
+  96%  { top: 4%;  opacity: 1; }
+  100% { top: 4%;  opacity: 0.35; }
+}
+
+.scan-hint {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 6px 14px;
+  border-radius: 100px;
+  backdrop-filter: blur(4px);
+  letter-spacing: 0.2px;
+}
+
+/* Erfolgs-Zustand: Laser & Ecken werden grün */
+.scan-overlay.success .scan-laser {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(0, 212, 170, 0.25) 12%,
+    #00d4aa 50%,
+    rgba(0, 212, 170, 0.25) 88%,
+    transparent 100%);
+  box-shadow:
+    0 0 8px 2px rgba(0, 212, 170, 0.75),
+    0 0 22px 6px rgba(0, 212, 170, 0.35);
+  animation-play-state: paused;
+}
+.scan-overlay.success .scan-corner { border-color: var(--accent-2); }
+.scan-overlay.success .scan-hint {
+  border-color: rgba(0, 212, 170, 0.5);
+  color: var(--accent-2);
+}
+
+.scan-success-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 11;
+  pointer-events: none;
+  background: rgba(0, 212, 170, 0.28);
+  animation: scanFlash 0.6s ease-out forwards;
+  border-radius: 12px;
+}
+@keyframes scanFlash {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Reduzierte Bewegung respektieren (Barrierefreiheit) */
+@media (prefers-reduced-motion: reduce) {
+  .scan-laser { animation: none; top: 50%; }
+}
+
+/* ══════════════════════════════════════════════════
+   HELLER MODUS (umschaltbar über ☀️/🌙 im Header)
+   ══════════════════════════════════════════════════ */
+:root[data-theme="light"] {
+  --bg-deep:    #eef3fa;
+  --bg-card:    #ffffff;
+  --bg-card2:   #f2f6fc;
+  --bg-input:   #f7fafd;
+  --border:     #d4e0ef;
+  --border-lg:  #b3c8e0;
+  --accent-1:   #1d72d3;
+  --accent-2:   #009478;
+  --accent-pain:#d8484f;
+  --accent-rls: #7c5cd6;
+  --text-1:     #14253f;
+  --text-2:     #44608a;
+  --text-3:     #7b93b5;
+  --morning:    #c47d08;
+  --noon:       #1d72d3;
+  --evening:    #7c5cd6;
+  --night:      #5b7497;
+  --shadow:     0 4px 24px rgba(30,58,95,0.12);
+  --shadow-lg:  0 8px 40px rgba(30,58,95,0.18);
+}
+:root[data-theme="light"] .header {
+  background: linear-gradient(135deg, #ffffff 0%, #f2f6fc 100%);
+}
+:root[data-theme="light"] .scan-overlay .scan-hint {
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+}
+:root[data-theme="light"] .welcome-hero {
+  background: linear-gradient(135deg, rgba(29,114,211,0.08), rgba(0,148,120,0.06)), var(--bg-card);
+}
+:root[data-theme="light"] .floating-save-wrap {
+  background: linear-gradient(to top, var(--bg-deep) 40%, rgba(238,243,250,0.92) 75%, transparent);
+}
+
+/* ══════════════════════════════════════════════════
+   STREAK-BADGE
+   ══════════════════════════════════════════════════ */
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  background: linear-gradient(135deg, rgba(255,140,40,0.18), rgba(255,80,40,0.12));
+  border: 1px solid rgba(255,140,40,0.45);
+  color: #ff9d4d;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 100px;
+  letter-spacing: 0.2px;
+  animation: streakPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes streakPop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ══════════════════════════════════════════════════
+   WOCHEN-ZUSAMMENFASSUNG
+   ══════════════════════════════════════════════════ */
+.week-sum-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.week-sum-row:last-child { border-bottom: none; }
+.week-sum-label { flex: 1; color: var(--text-2); font-weight: 500; }
+.week-sum-val {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+.trend-good, .trend-bad, .trend-neutral {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.trend-good {
+  color: var(--accent-2);
+  background: rgba(0,212,170,0.12);
+  border: 1px solid rgba(0,212,170,0.3);
+}
+.trend-bad {
+  color: var(--accent-pain);
+  background: rgba(255,107,107,0.1);
+  border: 1px solid rgba(255,107,107,0.3);
+}
+.trend-neutral {
+  color: var(--text-3);
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+}
+
+/* ══════════════════════════════════════════════════
+   PDF-VORSCHAU MODAL
+   ══════════════════════════════════════════════════ */
+.pdf-preview-modal {
+  max-width: 920px !important;
+  width: 94vw;
+}
+.pdf-preview-frame {
+  width: 100%;
+  height: min(62vh, 540px);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+/* ══════════════════════════════════════════════════
+   ONBOARDING
+   ══════════════════════════════════════════════════ */
+.onboarding-modal {
+  max-width: 440px !important;
+  text-align: left;
+}
+.ob-icon {
+  font-size: 44px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+.ob-text {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.65;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.ob-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+.ob-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-lg);
+  transition: all 0.2s;
+}
+.ob-dot.active {
+  background: var(--accent-1);
+  width: 22px;
+  border-radius: 100px;
+}
+
+/* Uhrzeit-Hinweis am Bedarfs-Chip */
+.med-chip-time { color: var(--accent-2); font-weight: 600; }
+
+/* ══════════════════════════════════════════════════
+   PIN-SPERRBILDSCHIRM
+   ══════════════════════════════════════════════════ */
+.app-lock {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--bg-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.app-lock-box {
+  width: min(340px, 100%);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+.app-lock-icon { font-size: 42px; margin-bottom: 12px; }
+.app-lock-title { font-size: 17px; font-weight: 700; color: var(--text-1); }
+.app-lock-sub { font-size: 13px; color: var(--text-2); margin: 6px 0 16px; }
+.app-lock-input {
+  text-align: center;
+  font-size: 22px !important;
+  letter-spacing: 8px;
+  font-family: var(--mono);
+  margin-bottom: 8px;
+}
+.app-lock-error {
+  min-height: 18px;
+  font-size: 12px;
+  color: var(--accent-pain);
+  margin-bottom: 8px;
 }

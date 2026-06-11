@@ -103,7 +103,7 @@ function loadCurrentEntry() {
     btn.classList.toggle('on', !!factors[btn.dataset.factor]);
   });
 
-  renderMedIntakeForDiary(entry.medsTaken || []);
+  renderMedIntakeForDiary(entry.medsTaken || [], entry.medsTakenTimes || {});
 }
 
 function saveEntry() {
@@ -143,6 +143,12 @@ function saveEntry() {
   if (taken.length) entry.medsTaken = taken;
   else delete entry.medsTaken;
 
+  const takenTimes = typeof collectMedicationIntakeTimesFromDom === 'function'
+    ? collectMedicationIntakeTimesFromDom()
+    : {};
+  if (Object.keys(takenTimes).length) entry.medsTakenTimes = takenTimes;
+  else delete entry.medsTakenTimes;
+
   // Only save if there is actual data (not just an empty object)
   const hasData = TIMES.some(t => entry[`${t.key}_pain`] !== undefined || entry[`${t.key}_rls`] !== undefined)
     || entry.notes || entry.sleepHours !== undefined || entry.sleepQuality !== undefined
@@ -158,6 +164,7 @@ function saveEntry() {
   saveStore(store);
   if (store[currentDate] && typeof markDataEnteredToday === 'function') markDataEnteredToday();
   buildWeekStrip();
+  if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
   showToast('✅ Eintrag gespeichert');
 
   // Pulse animation on save button

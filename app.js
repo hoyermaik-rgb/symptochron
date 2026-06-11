@@ -142,6 +142,7 @@ function initApp() {
   loadRlsModeSettings();
   refreshMedInteractionAlert();
   initImportZone();
+  if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
   applyInitialRoute();
 }
 
@@ -157,11 +158,15 @@ function updateHeaderDate() {
 function switchTab(name) {
   document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
-  document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+  const section = document.getElementById('tab-' + name);
+  if (!section) return;
+  section.classList.add('active');
+  document.querySelectorAll(`[data-tab="${name}"]`).forEach(b => b.classList.add('active'));
   if (location.hash !== `#${name}`) {
     history.replaceState(null, '', `#${name}`);
   }
+  window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+  if (name === 'welcome' && typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
   if (name === 'charts') renderCharts();
   if (name === 'rls') refreshRlsTab();
   if (name === 'meds') renderMedList();
@@ -170,9 +175,11 @@ function switchTab(name) {
 
 function applyInitialRoute() {
   const route = (location.hash || '').replace('#', '').trim();
-  const validTabs = ['diary', 'rls', 'meds', 'analysis', 'charts', 'export'];
+  const validTabs = ['welcome', 'diary', 'rls', 'meds', 'analysis', 'charts', 'export'];
   if (validTabs.includes(route)) {
     switchTab(route);
+  } else {
+    switchTab('welcome');
   }
 }
 

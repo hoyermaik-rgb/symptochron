@@ -72,6 +72,14 @@ function renderAppMenu() {
         <span>🔔 Erinnerung 22:05</span>
         <span id="dailyReminderState">${reminder.enabled ? 'aktiv' : 'aus'}</span>
       </button>
+      <button class="menu-action" type="button" onclick="togglePinProtection()">
+        <span>🔒 PIN-Schutz</span>
+        <span>${typeof isPinEnabled === 'function' && isPinEnabled() ? 'aktiv' : 'aus'}</span>
+      </button>
+      <button class="menu-action" type="button" onclick="switchTab('sos'); closeAppMenu()">
+        <span>🆘 SOS &amp; Daten</span>
+        <span>›</span>
+      </button>
     </aside>
   `;
 }
@@ -386,15 +394,51 @@ function scheduleDailyReminder() {
   }, next.getTime() - now.getTime());
 }
 
+// Offene (geplante) Medikamenten-Einnahmen für heute ermitteln
+function getOpenMedIntakesToday() {
+  if (typeof getMeds !== 'function') return [];
+  const store = typeof getStore === 'function' ? getStore() : {};
+  const entry = store[todayStr()] || {};
+  const taken = Array.isArray(entry.medsTaken) ? entry.medsTaken : [];
+  const slotLabels = { morning: 'morgens', noon: 'mittags', evening: 'abends', night: 'nachts' };
+  const open = [];
+  getMeds().forEach(med => {
+    const sched = med.schedule || {};
+    Object.keys(slotLabels).forEach(key => {
+      if (!(sched[key] > 0)) return;
+      const slotId = `${med.id}_${key}`;
+      if (!taken.includes(slotId) && !taken.includes(med.id)) {
+        open.push(`${med.name} (${slotLabels[key]})`);
+      }
+    });
+  });
+  return open;
+}
+
 function sendDailyReminderIfNeeded() {
   const store = typeof getStore === 'function' ? getStore() : {};
   const today = todayStr();
   const hasDiary = !!store[today];
   const hasBloodPressure = getBloodPressureEntries().some(entry => entry.date === today);
-  if (hasDiary || hasBloodPressure) return;
+  const openMeds = getOpenMedIntakesToday();
 
-  const title = 'Kleine Erinnerung';
-  const body = 'Du hast heute noch keine Werte eingetragen. Ein kurzer Eintrag reicht schon.';
+  // Nichts offen? Dann keine Erinnerung nötig.
+  if ((hasDiary || hasBloodPressure) && openMeds.length === 0) return;
+
+  let title = 'Kleine Erinnerung';
+  let body;
+  if (openMeds.length > 0 && !hasDiary) {
+    const medList = openMeds.slice(0, 3).join(', ') + (openMeds.length > 3 ? ` und ${openMeds.length - 3} weitere` : '');
+    body = `Tagebuch ist noch offen und es fehlen Einnahmen: ${medList}.`;
+    title = '💊 Medikamente & Tagebuch offen';
+  } else if (openMeds.length > 0) {
+    const medList = openMeds.slice(0, 3).join(', ') + (openMeds.length > 3 ? ` und ${openMeds.length - 3} weitere` : '');
+    body = `Noch nicht bestätigt: ${medList}. Schon eingenommen? Kurz antippen!`;
+    title = '💊 Einnahme noch nicht bestätigt';
+  } else {
+    body = 'Du hast heute noch keine Werte eingetragen. Ein kurzer Eintrag reicht schon.';
+  }
+
   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
     navigator.serviceWorker.ready
       .then(reg => reg.showNotification(title, { body, tag: 'daily-entry-reminder', icon: 'icons/icon-192.png' }))

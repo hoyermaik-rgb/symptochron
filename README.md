@@ -5,6 +5,7 @@ SymptoChron ist eine lokale Web-App zur Erfassung von:
 - Schmerzen
 - RLS (Restless-Legs-Syndrom)
 - Schlaf
+- Stimmung & Depression (MoodPath-Modul)
 - Medikamentenplan und Einnahmen
 - Blutdruck
 - Export- und Backup-Daten
@@ -41,14 +42,24 @@ Die App läuft komplett im Browser und speichert Daten lokal auf dem Gerät.
 - Tageszeit-Analyse
 - Einflussfaktoren-Vergleich
 - Medikationsanalyse
-- Korrelationen
+- Korrelationen (inkl. Stimmung)
 - Blutdruck-/Schmerz-Vergleich
+- Mood-Insights (Stimmung ↔ Schmerz/RLS/Schlaf)
 
 ### Export / Import
 - JSON-Backup
 - CSV-Export
 - PDF-Bericht
 - JSON- und CSV-Import
+
+### Stimmung & Mood (MoodPath)
+- Täglicher Stimmungs-Check-In (0–10 Skala)
+- 7 Dimensionen: Stimmung, Energie, Antrieb, Angst, Reizbarkeit, Konzentration, Hoffnungslosigkeit
+- Depressions-Symptome-Tracking
+- Positive Aktivitäten
+- Stimmungs-Notizen mit Spracheingabe
+- Mood-Status auf dem Startbildschirm
+- Korrelationen mit Schmerz, RLS und Schlaf
 
 ### Zusatzmodul
 - Blutdrucktabelle
@@ -86,6 +97,7 @@ Daten werden im Browser gespeichert über `localStorage`.
 - `patient.js` – Patientendaten
 - `sw.js` – Service Worker
 - `manifest.json` – PWA-Metadaten
+- `mood.js` – Stimmungs- und Mood-Tracking (MoodPath)
 
 ### Dokumentation
 - `TECHNISCHE_DOKUMENTATION.md` – ausführliche technische Dokumentation

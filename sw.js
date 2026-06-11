@@ -1,9 +1,11 @@
 // ── Service Worker – Schmerz & RLS Tagebuch ──
-const CACHE_NAME = 'symptochron-modern-v1';
+const CACHE_NAME = 'symptochron-modern-v3';
 const ASSETS = [
   './',
   './index.html',
   './app.js',
+  './ui.js',
+  './welcome.js',
   './meds.js',
   './bloodpressure.js',
   './charts.js',
@@ -17,6 +19,7 @@ const ASSETS = [
   'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Mono:wght@300;400;500&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
 ];
 
 self.addEventListener('install', event => {

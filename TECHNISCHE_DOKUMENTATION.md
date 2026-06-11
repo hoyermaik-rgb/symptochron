@@ -6,6 +6,7 @@ SymptoChron ist eine clientseitige Web-App zur lokalen Erfassung von:
 - Schmerzintensität
 - RLS-Symptomatik
 - Schlaf
+- Stimmung & Depression (MoodPath-Modul)
 - Medikation
 - Blutdruck
 - Export-/Backup-Daten
@@ -49,6 +50,7 @@ Der Umbau erfolgte mit dem Ziel:
 - `scanner.js` – Scanner und Scan-Parsing
 - `bloodpressure.js` – Blutdruckmodul
 - `patient.js` – Patientendaten
+- `mood.js` – Stimmungs- und Mood-Tracking (MoodPath)
 - `style.css` – komplettes UI-Styling
 - `sw.js` – Service Worker
 - `manifest.json` – PWA-Metadaten
@@ -402,6 +404,96 @@ Vorher konnten RLS-Durchschnitte verfälscht sein.
 - `importData(input)`
 - `mergeBloodPressureEntries(existing, incoming)`
 - `clearAllData()`
+
+---
+
+## 24. Mood-Modul (MoodPath) – Stimmungs- und Depressions-Tracking
+
+Das Mood-Modul wurde als eigenständiges Feature-Modul hinzugefügt und ist vollständig in die bestehende App integriert.
+
+### 24.1 Aufgaben
+- Täglicher Stimmungs-Check-In (7 Dimensionen)
+- Depressions-Symptome-Tracking
+- Positive Aktivitäten
+- Stimmungs-Notizen mit Spracheingabe
+- Mood-Status auf dem Startbildschirm
+- Korrelationen mit Schmerz, RLS und Schlaf
+- Mood-Daten in Export/Import
+
+### 24.2 Datei
+- `mood.js` – vollständige Mood-Logik
+
+### 24.3 LocalStorage-Key
+- `symptochron_mood` – Stimmungsdaten pro Datum
+
+### 24.4 Datenmodell (Mood-Eintrag)
+
+```js
+{
+  stimmung: 7,
+  energie: 6,
+  antrieb: 5,
+  angst: 3,
+  reizbarkeit: 4,
+  konzentration: 8,
+  hoffnungslosigkeit: 2,
+  symptoms: {
+    gruebeln: true,
+    schuldgefuehle: true
+  },
+  activities: {
+    sport: true,
+    freunde: true
+  },
+  notes: "Gutes Gespräch heute",
+  updated: "2026-06-11T..."
+}
+```
+
+### 24.5 Globale Hilfsfunktionen
+- `getMoodStore()`
+- `getMoodAverageForDate(dateStr)`
+- `MOOD_DIMENSIONS`
+
+### 24.6 Integrationen
+
+**Startbildschirm (welcome.js)**
+- Automatische Mood-Status-Karte mit Durchschnittswert und Farbcodierung
+
+**Statistik (charts.js)**
+- Drei neue Korrelationen:
+  - Ø Schmerz ↔ Stimmung
+  - Ø RLS ↔ Stimmung
+  - Schlafqualität ↔ Stimmung
+
+**Export (export.js)**
+- CSV: Neue Spalten `stimmung`, `energie`, `angst`
+- JSON: Mood-Daten werden unter dem Key `mood` mitexportiert (Version 5)
+
+### 24.7 Navigation
+- Neuer Tab „Mood“ (`#mood`)
+- Wird über `switchTab('mood')` gesteuert
+
+### 24.8 Design
+- Vollständig konsistent mit dem bestehenden UI
+- Verwendet dieselben Farben und Komponenten wie RLS und Tagebuch
+
+---
+
+## 25. Aktualisierte Script-Reihenfolge
+
+Die empfohlene Reihenfolge im `index.html` lautet nun:
+
+1. `app.js`
+2. `meds.js`
+3. `diary.js`
+4. `rls.js`
+5. `bloodpressure.js`
+6. `charts.js`
+7. `export.js`
+8. `patient.js`
+9. `scanner.js`
+10. `mood.js` (kann auch früher geladen werden)
 
 ---
 

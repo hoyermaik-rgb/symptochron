@@ -5,7 +5,7 @@ function exportCSV() {
 
   if (dates.length === 0) { showToast('⚠️ Keine Daten zum Exportieren'); return; }
 
-  const header = 'datum,morgen_schmerz,morgen_rls,mittag_schmerz,mittag_rls,abend_schmerz,abend_rls,nacht_schmerz,nacht_rls,schlafdauer_stunden,schlafqualitaet_1_5,notizen';
+  const header = 'datum,morgen_schmerz,morgen_rls,mittag_schmerz,mittag_rls,abend_schmerz,abend_rls,nacht_schmerz,nacht_rls,schlafdauer_stunden,schlafqualitaet_1_5,stimmung,energie,angst,notizen';
   const rows = dates.map(d => {
     const e = store[d];
     const cols = [
@@ -40,8 +40,9 @@ function exportJSON() {
     rlsDaily: getRlsDaily(),
     rlsSurveys: getRlsSurveys(),
     bloodPressure: typeof getBloodPressureEntries === 'function' ? getBloodPressureEntries() : [],
+    mood: typeof getMoodStore === 'function' ? getMoodStore() : {},
     exportedAt: new Date().toISOString(),
-    version: 4,
+    version: 5,
   };
   downloadFile(JSON.stringify(data, null, 2), `schmerztagebuch_backup_${todayStr()}.json`, 'application/json');
   showToast('✅ JSON-Backup erstellt');
@@ -73,9 +74,9 @@ function mergeBloodPressureEntries(existing, incoming) {
 //  PDF EXPORT – Komplett im Querformat (Landscape)
 // ══════════════════════════════════════════════════
 
-function exportPDF() {
+function buildPdfDocument() {
   var lib = window.jspdf || window.jsPDF;
-  if (!lib) { showToast('⏳ PDF-Bibliothek lädt nicht oder fehlt...'); return; }
+  if (!lib) { showToast('⏳ PDF-Bibliothek lädt nicht oder fehlt...'); return null; }
 
   var jsPDF = lib.jsPDF || lib;
   // ALLES im Querformat
@@ -108,7 +109,10 @@ function exportPDF() {
     drawDataMatrixL(doc, store, dates, pName, pBirth, createdAt, W, H);
   }
 
-  // Download
+  return doc;
+}
+
+function downloadPdfDocument(doc) {
   try {
     var filename = 'symptochron_bericht_' + todayStr() + '.pdf';
     var blob = doc.output('blob');
@@ -124,6 +128,52 @@ function exportPDF() {
   } catch(e) {
     doc.output('dataurlnewwindow');
   }
+}
+
+function exportPDF() {
+  var doc = buildPdfDocument();
+  if (doc) downloadPdfDocument(doc);
+}
+
+// ── PDF-Vorschau vor dem Download ────────────────
+var pdfPreviewUrl = null;
+
+function previewPDF() {
+  var doc = buildPdfDocument();
+  if (!doc) return;
+
+  var modal = document.getElementById('pdfPreviewModal');
+  var frame = document.getElementById('pdfPreviewFrame');
+  // Fallback: ohne Modal (oder auf kleinen Geräten ohne PDF-Viewer) direkt herunterladen
+  var isSmallScreen = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
+  if (!modal || !frame || isSmallScreen) {
+    downloadPdfDocument(doc);
+    return;
+  }
+
+  try {
+    if (pdfPreviewUrl) { URL.revokeObjectURL(pdfPreviewUrl); pdfPreviewUrl = null; }
+    var blob = doc.output('blob');
+    pdfPreviewUrl = URL.createObjectURL(blob);
+    frame.src = pdfPreviewUrl + '#toolbar=0&view=FitH';
+    modal.classList.add('open');
+  } catch (e) {
+    downloadPdfDocument(doc);
+  }
+}
+
+function closePdfPreview() {
+  var modal = document.getElementById('pdfPreviewModal');
+  var frame = document.getElementById('pdfPreviewFrame');
+  if (modal) modal.classList.remove('open');
+  if (frame) frame.src = 'about:blank';
+  if (pdfPreviewUrl) { URL.revokeObjectURL(pdfPreviewUrl); pdfPreviewUrl = null; }
+}
+
+function downloadPreviewedPDF() {
+  var doc = buildPdfDocument();
+  if (doc) downloadPdfDocument(doc);
+  closePdfPreview();
 }
 
 // ══════════════════════════════════════════════════
@@ -832,6 +882,7 @@ function importData(input) {
         buildWeekStrip();
         if (typeof renderMedList === 'function') renderMedList();
         if (typeof refreshDiary === 'function') refreshDiary();
+      if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
         if (typeof initRlsTab === 'function') initRlsTab();
         showToast('✅ JSON importiert');
       } catch(ex) {
@@ -891,6 +942,7 @@ function importData(input) {
       saveStore(store);
       buildWeekStrip();
       if (typeof refreshDiary === 'function') refreshDiary();
+      if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
       showToast('✅ ' + imported + ' Einträge importiert');
     } catch(err) {
       showToast('❌ Importfehler: ' + err.message);
@@ -937,5 +989,6 @@ function clearAllData() {
   if (typeof renderMedList === 'function') renderMedList();
   if (typeof loadPatientData === 'function') loadPatientData();
   if (typeof initRlsTab === 'function') initRlsTab();
+  if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
   showToast('🗑 Alle Daten gelöscht');
 }

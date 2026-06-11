@@ -53,6 +53,44 @@ function setScannerUiState(isScanning) {
   if (stopBtn) stopBtn.style.display = isScanning ? "inline-block" : "none";
 }
 
+// ── Scanner-Overlay: roter Laser-Streifen + Zielecken ──
+function addScannerOverlay() {
+  const container = document.getElementById("scanner-video-container");
+  if (!container || container.querySelector(".scan-overlay")) return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "scan-overlay";
+  overlay.innerHTML = `
+    <div class="scan-frame">
+      <span class="scan-corner tl"></span>
+      <span class="scan-corner tr"></span>
+      <span class="scan-corner bl"></span>
+      <span class="scan-corner br"></span>
+      <div class="scan-laser"></div>
+    </div>
+    <div class="scan-hint">Code in den Rahmen halten</div>
+  `;
+  container.appendChild(overlay);
+}
+
+function removeScannerOverlay() {
+  const container = document.getElementById("scanner-video-container");
+  if (!container) return;
+  const overlay = container.querySelector(".scan-overlay");
+  if (overlay) overlay.remove();
+}
+
+function flashScannerSuccess() {
+  const container = document.getElementById("scanner-video-container");
+  if (!container) return;
+  const overlay = container.querySelector(".scan-overlay");
+  if (overlay) overlay.classList.add("success");
+  const flash = document.createElement("div");
+  flash.className = "scan-success-flash";
+  container.appendChild(flash);
+  setTimeout(() => flash.remove(), 600);
+}
+
 function forceScannerVideoVisible() {
   const container = document.getElementById("scanner-video-container");
   if (!container) return;
@@ -130,8 +168,9 @@ async function startQRScanner() {
     );
 
     forceScannerVideoVisible();
-    setTimeout(forceScannerVideoVisible, 150);
-    setTimeout(forceScannerVideoVisible, 500);
+    addScannerOverlay();
+    setTimeout(() => { forceScannerVideoVisible(); addScannerOverlay(); }, 150);
+    setTimeout(() => { forceScannerVideoVisible(); addScannerOverlay(); }, 500);
 
   } catch (err) {
     console.error("Kamera-Fehler:", err);
@@ -168,9 +207,14 @@ function stopQRScanner() {
 }
 
 function onScanSuccess(decodedText) {
-  if (typeof showToast === 'function') showToast("Code erkannt!");
-  stopQRScanner();
-  parseMedicationPlan(decodedText);
+  if (typeof showToast === 'function') showToast("✅ Code erkannt!");
+  flashScannerSuccess();
+  if (navigator.vibrate) { try { navigator.vibrate(80); } catch (e) {} }
+  // Kurz das Erfolgs-Feedback zeigen, dann Scanner schließen
+  setTimeout(() => {
+    stopQRScanner();
+    parseMedicationPlan(decodedText);
+  }, 450);
 }
 
 function onScanFailure(error) {}
@@ -213,52 +257,7 @@ function parseMedicationPlan(text) {
     // 2. VERSUCH: PZN Erkennung (Wenn es nur eine Zahlenfolge ist)
     const isPZN = /^\d{7,10}$/.test(text.trim());
     if (isPZN) {
-      const pznClean = text.trim();
-      if (typeof showToast === 'function') showToast("Suche Medikament in Datenbank...");
-
-      const mockMedicationDB = {
-        "1234567": { name: "Ibuprofen 400mg", form: "Tablette", hersteller: "Beispiel GmbH" },
-        "9876543": { name: "Paracetamol 500mg", form: "Kapsel", hersteller: "Apotheken-Direkt" },
-        "5556667": { name: "Diclofenac Gel", form: "Gel", hersteller: "Schmerzfrei AG" }
-      };
-
-      const mockFetch = pzn => new Promise(resolve => {
-        setTimeout(() => resolve(mockMedicationDB[pzn] || null), 500);
-      });
-
-      mockFetch(pznClean).then(data => {
-        if (data) {
-          meds.push(buildScannedMedication({
-            pzn: pznClean,
-            name: data.name,
-            dose: 'Bitte ergänzen',
-            form: data.form || 'Bitte ergänzen',
-            note: 'Automatisch über PZN geladen' + (data.hersteller ? ` (${data.hersteller})` : '')
-          }));
-          commitScannedMedications(meds);
-          if (typeof showToast === 'function') showToast("Medikament erfolgreich geladen!");
-        } else {
-          meds.push(buildScannedMedication({
-            pzn: pznClean,
-            name: `Unbekanntes Medikament (PZN: ${pznClean})`,
-            dose: 'Bitte ergänzen',
-            form: 'Bitte ergänzen',
-            note: 'PZN nicht in Datenbank gefunden'
-          }));
-          commitScannedMedications(meds);
-          if (typeof showToast === 'function') showToast("PZN nicht gefunden.");
-        }
-      }).catch(err => {
-        console.error("Fehler beim Abrufen der Daten:", err);
-        meds.push(buildScannedMedication({
-          pzn: pznClean,
-          name: `Fehler beim Laden (PZN: ${pznClean})`,
-          dose: 'Bitte ergänzen',
-          form: 'Bitte ergänzen',
-          note: 'Fehler beim Datenabruf'
-        }));
-        commitScannedMedications(meds);
-      });
+      handlePznScan(text.trim());
       return;
     }
 
@@ -279,6 +278,64 @@ function parseMedicationPlan(text) {
     console.error("Parsing Error:", err);
   }
 } // <-- Schließt die Funktion parseMedicationPlan
+
+// ── PZN-Lookup: lokale Medikamente → RxNav-API → manuell ergänzen ──
+async function handlePznScan(pzn) {
+  if (typeof showToast === 'function') showToast("🔍 Suche Medikament zu PZN " + pzn + "…");
+
+  // 1) Schon in der eigenen Liste? Dann nicht doppelt anlegen.
+  if (typeof getMeds === 'function') {
+    const existing = getMeds().find(m => m.pzn === pzn);
+    if (existing) {
+      if (typeof showToast === 'function') showToast(`✅ „${existing.name}" ist bereits in deiner Liste`);
+      return;
+    }
+  }
+
+  // 2) Online-Lookup über RxNav (approximate match)
+  let foundName = null;
+  try {
+    if (typeof RXNAV_BASE !== 'undefined' && navigator.onLine !== false) {
+      const r = await fetch(`${RXNAV_BASE}/approximateTerm.json?term=${encodeURIComponent(pzn)}&maxEntries=1`);
+      const j = await r.json();
+      const cand = j?.approximateGroup?.candidate;
+      const one = Array.isArray(cand) ? cand[0] : cand;
+      if (one?.rxcui) {
+        const r2 = await fetch(`${RXNAV_BASE}/rxcui/${one.rxcui}/properties.json`);
+        const j2 = await r2.json();
+        if (j2?.properties?.name) foundName = j2.properties.name;
+      }
+    }
+  } catch (e) { /* offline oder API nicht erreichbar – weiter mit manueller Ergänzung */ }
+
+  if (foundName) {
+    commitScannedMedications([buildScannedMedication({
+      pzn,
+      name: foundName,
+      dose: 'Bitte ergänzen',
+      form: 'Bitte ergänzen',
+      note: 'Per PZN-Scan geladen – bitte Dosis prüfen'
+    })]);
+    if (typeof showToast === 'function') showToast(`✅ „${foundName}" hinzugefügt – bitte Dosis ergänzen`);
+    return;
+  }
+
+  // 3) Kein Treffer: Formular mit vorausgefüllter PZN öffnen statt „Unbekannt" zu speichern
+  if (typeof openMedModal === 'function') {
+    openMedModal();
+    const pznField = document.getElementById('medPzn');
+    if (pznField) pznField.value = pzn;
+    if (typeof showToast === 'function') showToast("PZN übernommen – bitte Name & Dosis eintragen");
+  } else {
+    commitScannedMedications([buildScannedMedication({
+      pzn,
+      name: `Unbekanntes Medikament (PZN: ${pzn})`,
+      dose: 'Bitte ergänzen',
+      form: 'Bitte ergänzen',
+      note: 'PZN nicht gefunden – bitte Angaben vervollständigen'
+    })]);
+  }
+}
 
 // Event Listener für die Buttons aktivieren
 function initScannerButtons() {
