@@ -41,8 +41,9 @@ function exportJSON() {
     rlsSurveys: getRlsSurveys(),
     bloodPressure: typeof getBloodPressureEntries === 'function' ? getBloodPressureEntries() : [],
     mood: typeof getMoodStore === 'function' ? getMoodStore() : {},
+    sos: typeof getSOSData === 'function' ? getSOSData() : (JSON.parse(localStorage.getItem('symptochron_sos_data') || '{}')),
     exportedAt: new Date().toISOString(),
-    version: 5,
+    version: 6,
   };
   downloadFile(JSON.stringify(data, null, 2), `schmerztagebuch_backup_${todayStr()}.json`, 'application/json');
   showToast('✅ JSON-Backup erstellt');
@@ -878,6 +879,9 @@ function importData(input) {
         if (data.bloodPressure && typeof getBloodPressureEntries === 'function' && typeof saveBloodPressureEntries === 'function') {
           var bp = mergeBloodPressureEntries(getBloodPressureEntries(), data.bloodPressure);
           saveBloodPressureEntries(bp);
+        }
+        if (data.sos) {
+          localStorage.setItem('symptochron_sos_data', JSON.stringify(data.sos));
         }
         buildWeekStrip();
         if (typeof renderMedList === 'function') renderMedList();

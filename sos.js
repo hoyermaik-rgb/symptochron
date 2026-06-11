@@ -12,6 +12,8 @@ function getSOSData() {
   }
 }
 
+window.getSOSData = getSOSData;
+
 function saveSOSData() {
   const data = {
     personal: {
