@@ -45,14 +45,14 @@ function buildTimeBlocks() {
       </div>
       <div class="score-row">
         <div class="score-label">Schmerz<span>Intensität 0–10</span></div>
-        <select class="score-select pain" id="${t.key}_pain" onchange="updateScoreBadge('${t.key}','pain')">
+        <select class="score-select pain" id="${t.key}_pain" onchange="updateScoreBadge('${t.key}','pain'); saveEntry(true)">
           ${scoreOptions()}
         </select>
         <div class="score-badge pain" id="${t.key}_pain_badge">–</div>
       </div>
       <div class="score-row">
         <div class="score-label">RLS<span>Intensität 0–10</span></div>
-        <select class="score-select rls" id="${t.key}_rls" onchange="updateScoreBadge('${t.key}','rls')">
+        <select class="score-select rls" id="${t.key}_rls" onchange="updateScoreBadge('${t.key}','rls'); saveEntry(true)">
           ${scoreOptions()}
         </select>
         <div class="score-badge rls" id="${t.key}_rls_badge">–</div>
@@ -175,7 +175,7 @@ function loadCurrentEntry() {
   }
 }
 
-function saveEntry() {
+function saveEntry(silent = false) {
   const store = getStore();
   const entry = store[currentDate] || {};
 
@@ -234,15 +234,17 @@ function saveEntry() {
   if (store[currentDate] && typeof markDataEnteredToday === 'function') markDataEnteredToday();
   buildWeekStrip();
   if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
-  showToast('✅ Eintrag gespeichert');
-
-  // Pulse animation on save button
-  var saveBtn = document.getElementById('saveEntryBtn');
-  if (saveBtn) {
-    saveBtn.classList.remove('pulse-ok');
-    void saveBtn.offsetWidth;
-    saveBtn.classList.add('pulse-ok');
-    setTimeout(function() { saveBtn.classList.remove('pulse-ok'); }, 700);
+  
+  if (!silent) {
+    showToast('✅ Eintrag gespeichert');
+    // Pulse animation on save button
+    var saveBtn = document.getElementById('saveEntryBtn');
+    if (saveBtn) {
+      saveBtn.classList.remove('pulse-ok');
+      void saveBtn.offsetWidth;
+      saveBtn.classList.add('pulse-ok');
+      setTimeout(function() { saveBtn.classList.remove('pulse-ok'); }, 700);
+    }
   }
 }
 
@@ -279,7 +281,7 @@ function buildInfluenceTags() {
   const row = document.getElementById('influenceTags');
   if (!row) return;
   row.innerHTML = INFLUENCE_TAGS.map(t =>
-    `<button type="button" class="tag-btn" data-factor="${t.key}" onclick="toggleFactor('${t.key}')">${t.label}</button>`
+    `<button type="button" class="tag-btn" data-factor="${t.key}" onclick="toggleFactor('${t.key}'); saveEntry(true)">${t.label}</button>`
   ).join('');
 }
 

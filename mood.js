@@ -115,7 +115,7 @@ function buildMoodSymptomGrid() {
   if (!container) return;
   container.innerHTML = MOOD_SYMPTOMS.map(s => `
     <label class="symptom-chip">
-      <input type="checkbox" data-symptom="${s.key}" onchange="toggleMoodSymptom(this)">
+      <input type="checkbox" data-symptom="${s.key}" onchange="toggleMoodSymptom(this); saveMoodEntry(true)">
       <span>${s.label}</span>
     </label>
   `).join('');
@@ -130,7 +130,7 @@ function buildMoodActivityTags() {
   const row = document.getElementById('moodActivityTags');
   if (!row) return;
   row.innerHTML = MOOD_ACTIVITIES.map(a => `
-    <button type="button" class="tag-btn" data-activity="${a.key}" onclick="toggleMoodActivity('${a.key}')">
+    <button type="button" class="tag-btn" data-activity="${a.key}" onclick="toggleMoodActivity('${a.key}'); saveMoodEntry(true)">
       ${a.label}
     </button>
   `).join('');
@@ -170,7 +170,7 @@ function loadMoodEntry() {
   if (notesEl) notesEl.value = entry.notes || '';
 }
 
-function saveMoodEntry() {
+function saveMoodEntry(silent = false) {
   const store = getMoodStore();
   const entry = store[currentMoodDate] || {};
 
@@ -220,7 +220,9 @@ function saveMoodEntry() {
   // Also update welcome if exists
   if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
 
-  showToast('✅ Stimmungs-Eintrag gespeichert');
+  if (!silent) {
+    showToast('✅ Stimmungs-Eintrag gespeichert');
+  }
 
   // Optional: trigger correlation refresh if charts are visible
   if (document.getElementById('tab-charts')?.classList.contains('active')) {

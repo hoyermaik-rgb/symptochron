@@ -193,23 +193,23 @@
             <div class="card-subtitle">Letzte Nacht</div>
           </div>
         </div>
-        <div class="sleep-grid">
-          <div class="form-group">
-            <label class="form-label" for="sleepHours">Schlafdauer (Stunden)</label>
-            <input class="form-input" type="number" id="sleepHours" min="0" max="24" step="0.5" placeholder="z. B. 6,5" />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="sleepQuality">Schlafqualität</label>
-            <select class="form-input" id="sleepQuality">
-              <option value="">–</option>
-              <option value="1">1 – Sehr schlecht</option>
-              <option value="2">2 – Schlecht</option>
-              <option value="3">3 – Mittel</option>
-              <option value="4">4 – Gut</option>
-              <option value="5">5 – Sehr gut</option>
-            </select>
-          </div>
+      <div class="sleep-grid">
+        <div class="form-group">
+          <label class="form-label" for="sleepHours">Schlafdauer (Stunden)</label>
+          <input class="form-input" type="number" id="sleepHours" min="0" max="24" step="0.5" placeholder="z. B. 6,5" onchange="saveEntry(true)" />
         </div>
+        <div class="form-group">
+          <label class="form-label" for="sleepQuality">Schlafqualität</label>
+          <select class="form-input" id="sleepQuality" onchange="saveEntry(true)">
+            <option value="">–</option>
+            <option value="1">1 – Sehr schlecht</option>
+            <option value="2">2 – Schlecht</option>
+            <option value="3">3 – Mittel</option>
+            <option value="4">4 – Gut</option>
+            <option value="5">5 – Sehr gut</option>
+          </select>
+        </div>
+      </div>
       </div>
 
       <!-- Schritt 4: Einflussfaktoren -->
@@ -234,7 +234,7 @@
           </div>
         </div>
         <div class="input-with-voice">
-          <textarea class="notes-area" id="dailyNotes" placeholder="z. B. starke Unruhe ab 22 Uhr, langer Spaziergang half…"></textarea>
+          <textarea class="notes-area" id="dailyNotes" placeholder="z. B. starke Unruhe ab 22 Uhr, langer Spaziergang half…" onchange="saveEntry(true)"></textarea>
           <button class="voice-btn" type="button" title="Spracheingabe" onclick="startVoiceInput('dailyNotes', this)">🎤</button>
         </div>
       </div>
@@ -619,49 +619,49 @@
         <div class="mood-grid">
           <div class="mood-row">
             <div class="mood-label">Stimmung</div>
-            <select class="mood-select" id="mood_stimmung" onchange="updateMoodBadge('stimmung')">
+            <select class="mood-select" id="mood_stimmung" onchange="updateMoodBadge('stimmung'); saveMoodEntry(true)">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_stimmung_badge">–</div>
           </div>
           <div class="mood-row">
             <div class="mood-label">Energie</div>
-            <select class="mood-select" id="mood_energie" onchange="updateMoodBadge('energie')">
+            <select class="mood-select" id="mood_energie" onchange="updateMoodBadge('energie'); saveMoodEntry(true)">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_energie_badge">–</div>
           </div>
           <div class="mood-row">
             <div class="mood-label">Antrieb</div>
-            <select class="mood-select" id="mood_antrieb" onchange="updateMoodBadge('antrieb')">
+            <select class="mood-select" id="mood_antrieb" onchange="updateMoodBadge('antrieb'); saveMoodEntry(true)">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_antrieb_badge">–</div>
           </div>
           <div class="mood-row">
             <div class="mood-label">Angst</div>
-            <select class="mood-select" id="mood_angst" onchange="updateMoodBadge('angst')">
+            <select class="mood-select" id="mood_angst" onchange="updateMoodBadge('angst'); saveMoodEntry(true)">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_angst_badge">–</div>
           </div>
           <div class="mood-row">
             <div class="mood-label">Reizbarkeit</div>
-            <select class="mood-select" id="mood_reizbarkeit" onchange="updateMoodBadge('reizbarkeit')">
+            <select class="mood-select" id="mood_reizbarkeit" onchange="updateMoodBadge('reizbarkeit'); saveMoodEntry(true)">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_reizbarkeit_badge">–</div>
           </div>
           <div class="mood-row">
             <div class="mood-label">Konzentration</div>
-            <select class="mood-select" id="mood_konzentration" onchange="updateMoodBadge('konzentration')">
+            <select class="mood-select" id="mood_konzentration" onchange="updateMoodBadge('konzentration'); saveMoodEntry(true)">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_konzentration_badge">–</div>
           </div>
           <div class="mood-row">
             <div class="mood-label">Hoffnungslosigkeit</div>
-            <select class="mood-select" id="mood_hoffnungslosigkeit" onchange="updateMoodBadge('hoffnungslosigkeit')">
+            <select class="mood-select" id="mood_hoffnungslosigkeit" onchange="updateMoodBadge('hoffnungslosigkeit'); saveMoodEntry(true)">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_hoffnungslosigkeit_badge">–</div>
@@ -703,7 +703,7 @@
           </div>
         </div>
         <div class="input-with-voice">
-          <textarea class="notes-area" id="moodNotes" placeholder="z. B. Gutes Gespräch mit Freund, viel Grübeln am Abend..."></textarea>
+          <textarea class="notes-area" id="moodNotes" placeholder="z. B. Gutes Gespräch mit Freund, viel Grübeln am Abend..." onchange="saveMoodEntry(true)"></textarea>
           <button class="voice-btn" type="button" title="Spracheingabe" onclick="startVoiceInput('moodNotes', this)">🎤</button>
         </div>
       </div>
