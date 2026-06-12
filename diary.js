@@ -81,7 +81,65 @@ function updateScoreBadge(timeKey, type) {
 }
 
 // ── Load / Save Entry ───────────────────────────
-function loadCurrentEntry() {
+function copyFromYesterday() {
+  const store = getStore();
+  const yesterday = addDays(currentDate, -1);
+  const prevEntry = store[yesterday];
+  
+  if (!prevEntry) {
+    showToast('Kein Eintrag vom Vortag vorhanden.');
+    return;
+  }
+
+  const elHours = document.getElementById('sleepHours');
+  const elQual = document.getElementById('sleepQuality');
+  
+  const hasCurrentSleep = elHours.value !== '' || elQual.value !== '';
+  const hasCurrentTags = Array.from(document.querySelectorAll('.tag-btn[data-factor]')).some(btn => btn.classList.contains('on'));
+  
+  if (hasCurrentSleep || hasCurrentTags) {
+    if (!confirm('Aktuelle Eingaben für Schlaf und Einflussfaktoren mit den Werten von gestern überschreiben?')) {
+      return;
+    }
+  }
+
+  // Copy Sleep
+  if (prevEntry.sleepHours !== undefined) elHours.value = prevEntry.sleepHours;
+  if (prevEntry.sleepQuality !== undefined) elQual.value = prevEntry.sleepQuality;
+  
+  // Copy Tags
+  const factors = prevEntry.factors || {};
+  document.querySelectorAll('.tag-btn[data-factor]').forEach(btn => {
+    btn.classList.toggle('on', !!factors[btn.dataset.factor]);
+  });
+  
+  // Copy Meds (only prefill DOM)
+  if (typeof getMeds === 'function') {
+    const list = document.getElementById('medIntakeList');
+    if (list) {
+      const takenYesterday = Array.isArray(prevEntry.medsTaken) ? prevEntry.medsTaken : [];
+      let updated = false;
+      list.querySelectorAll('[data-med-intake]').forEach(cb => {
+        // nur vorbefüllen, wenn nicht schon ausgewählt
+        if (takenYesterday.includes(cb.value) && !cb.checked) {
+          cb.checked = true;
+          const chip = cb.closest('.med-chip');
+          if (chip) {
+            chip.classList.add('taken');
+            const check = chip.querySelector('.med-chip-check');
+            if (check) check.textContent = '✓';
+          }
+          updated = true;
+        }
+      });
+      if (updated && typeof updateMedIntakeProgress === 'function') {
+        updateMedIntakeProgress();
+      }
+    }
+  }
+
+  showToast('Werte von gestern übernommen (noch nicht gespeichert).');
+}
   const store = getStore();
   const entry = store[currentDate] || {};
 

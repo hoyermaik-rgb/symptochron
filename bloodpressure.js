@@ -60,11 +60,32 @@ function renderAppMenu() {
   const mount = document.getElementById('appMenuMount');
   if (!mount) return;
   const reminder = getReminderSettings();
+  const currentTab = (location.hash || '').replace('#', '');
+  const p = typeof getUiPrefs === 'function' ? getUiPrefs() : { fontScale: 'normal', modules: { rls: true, mood: true, bp: true, sos: true } };
+
   mount.innerHTML = `
     <div class="app-menu-backdrop" id="appMenuBackdrop" onclick="closeAppMenu()"></div>
     <aside class="app-menu-panel" id="appMenuPanel" aria-hidden="true">
-      <div class="app-menu-title">Zusatzmodule</div>
-      <button class="menu-action" type="button" onclick="openBloodPressurePanel()">
+      <div class="app-menu-title">Mehr</div>
+      <button class="menu-action ${currentTab==='sos'?'active':''}" data-tab="sos" data-module-toggle="sos" type="button" onclick="switchTab('sos'); closeAppMenu()" style="color:var(--danger)">
+        <span>🆘 Notfall &amp; SOS</span>
+        <span>›</span>
+      </button>
+      <button class="menu-action ${currentTab==='rls'?'active':''}" data-tab="rls" data-module-toggle="rls" type="button" onclick="switchTab('rls'); closeAppMenu()">
+        <span>🦵 RLS-Tagebuch</span>
+        <span>›</span>
+      </button>
+      <button class="menu-action ${currentTab==='analysis'?'active':''}" data-tab="analysis" type="button" onclick="switchTab('analysis'); closeAppMenu()">
+        <span>📊 Analyse</span>
+        <span>›</span>
+      </button>
+      <button class="menu-action ${currentTab==='export'?'active':''}" data-tab="export" type="button" onclick="switchTab('export'); closeAppMenu()">
+        <span>📤 Daten &amp; Export</span>
+        <span>›</span>
+      </button>
+
+      <div class="app-menu-title" style="margin-top:20px; font-size:12px">Module & Einstellungen</div>
+      <button class="menu-action" data-module-toggle="bp" type="button" onclick="openBloodPressurePanel()">
         <span>🫀 Blutdrucktabelle</span>
         <span>›</span>
       </button>
@@ -76,12 +97,38 @@ function renderAppMenu() {
         <span>🔒 PIN-Schutz</span>
         <span>${typeof isPinEnabled === 'function' && isPinEnabled() ? 'aktiv' : 'aus'}</span>
       </button>
-      <button class="menu-action" type="button" onclick="switchTab('sos'); closeAppMenu()">
-        <span>🆘 SOS &amp; Daten</span>
-        <span>›</span>
-      </button>
+      
+      <div class="app-menu-title" style="margin-top:20px; font-size:12px">Komfort & Barrierefreiheit</div>
+      <div class="menu-action" style="flex-direction:column; align-items:flex-start; cursor:default;">
+        <span style="margin-bottom:8px">Textgröße</span>
+        <div style="display:flex; gap:8px; width:100%">
+          <button class="btn-secondary" style="flex:1; padding:4px; font-size:12px; ${p.fontScale==='small'?'border-color:var(--accent-1);color:var(--accent-1)':''}" onclick="setUiFontScale('small')">A</button>
+          <button class="btn-secondary" style="flex:1; padding:4px; font-size:14px; ${p.fontScale==='normal'?'border-color:var(--accent-1);color:var(--accent-1)':''}" onclick="setUiFontScale('normal')">A</button>
+          <button class="btn-secondary" style="flex:1; padding:4px; font-size:16px; ${p.fontScale==='large'?'border-color:var(--accent-1);color:var(--accent-1)':''}" onclick="setUiFontScale('large')">A</button>
+        </div>
+      </div>
+      <div class="menu-action" style="flex-direction:column; align-items:flex-start; cursor:default;">
+        <span style="margin-bottom:8px">Sichtbare Module</span>
+        <label style="display:flex; justify-content:space-between; width:100%; margin-bottom:6px; cursor:pointer;">
+          <span>RLS-Tagebuch</span>
+          <input type="checkbox" onchange="toggleUiModule('rls', this.checked)" ${p.modules.rls?'checked':''}>
+        </label>
+        <label style="display:flex; justify-content:space-between; width:100%; margin-bottom:6px; cursor:pointer;">
+          <span>Mood-Tracker</span>
+          <input type="checkbox" onchange="toggleUiModule('mood', this.checked)" ${p.modules.mood?'checked':''}>
+        </label>
+        <label style="display:flex; justify-content:space-between; width:100%; margin-bottom:6px; cursor:pointer;">
+          <span>Blutdruck</span>
+          <input type="checkbox" onchange="toggleUiModule('bp', this.checked)" ${p.modules.bp?'checked':''}>
+        </label>
+        <label style="display:flex; justify-content:space-between; width:100%; cursor:pointer;">
+          <span>SOS Notfall</span>
+          <input type="checkbox" onchange="toggleUiModule('sos', this.checked)" ${p.modules.sos?'checked':''}>
+        </label>
+      </div>
     </aside>
   `;
+  if (typeof applyUiPrefs === 'function') setTimeout(applyUiPrefs, 0);
 }
 
 function toggleAppMenu(forceOpen) {

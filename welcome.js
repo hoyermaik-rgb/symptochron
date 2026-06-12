@@ -130,6 +130,16 @@ function renderWeekSummary() {
       : `<span class="trend-bad">↑ ${diff.toFixed(1)} schlechter</span>`;
   };
 
+  // Auffälligkeit / Proaktive Hinweise
+  const insights = getPatternInsightsForWelcome(store);
+  let insightsHtml = '';
+  if (insights.length > 0) {
+    insightsHtml = `
+      <div class="section-title" style="margin-top: 14px; font-size: 13px; color: var(--text-2);">Auffälligkeit der Woche</div>
+      ${insights.slice(0, 1).map(t => `<div class="smart-insight" style="margin-top: 6px;">💡 ${t}</div>`).join('')}
+    `;
+  }
+
   body.innerHTML = `
     <div class="week-sum-row">
       <span class="week-sum-label">📅 Erfasste Tage</span>
@@ -144,7 +154,57 @@ function renderWeekSummary() {
       <span class="week-sum-label">🦵 Ø RLS</span>
       <span class="week-sum-val" style="color:var(--accent-rls)">${thisWeek.rls.toFixed(1)}</span>
       ${trend(thisWeek.rls, lastWeek.rls)}
-    </div>` : ''}`;
+    </div>` : ''}
+    ${insightsHtml}`;
+}
+
+// Ermittelt basierend auf denselben Regeln wie Charts.js eine Auffälligkeit für die Startseite
+function getPatternInsightsForWelcome(store) {
+  const insights = [];
+  if (typeof INFLUENCE_TAGS === 'undefined') return insights;
+  
+  INFLUENCE_TAGS.forEach(tag => {
+    const withVals = { pain: [], rls: [] };
+    const withoutVals = { pain: [], rls: [] };
+
+    Object.keys(store).forEach(d => {
+      const e = store[d];
+      const p = typeof dailyAvgPain === 'function' ? dailyAvgPain(e) : null;
+      const r = typeof dailyAvgRls === 'function' ? dailyAvgRls(e) : null;
+      if (p === null && r === null) return;
+      const has = !!(e.factors && e.factors[tag.key]);
+      if (has) {
+        if (p !== null) withVals.pain.push(p);
+        if (r !== null) withVals.rls.push(r);
+      } else {
+        if (p !== null) withoutVals.pain.push(p);
+        if (r !== null) withoutVals.rls.push(r);
+      }
+    });
+
+    const tagLabel = tag.label;
+    ['rls', 'pain'].forEach(metric => {
+      const w = withVals[metric];
+      const o = withoutVals[metric];
+      if (typeof MIN_PATTERN_DAYS !== 'undefined' && (w.length < MIN_PATTERN_DAYS || o.length < MIN_PATTERN_DAYS)) return;
+      
+      const sumW = w.reduce((a, b) => a + b, 0);
+      const sumO = o.reduce((a, b) => a + b, 0);
+      const avgW = sumW / w.length;
+      const avgO = sumO / o.length;
+      
+      const diff = avgW - avgO;
+      if (typeof MIN_TAG_DIFF !== 'undefined' && Math.abs(diff) < MIN_TAG_DIFF) return;
+      
+      const metricLabel = metric === 'rls' ? 'RLS' : 'Schmerz';
+      if (diff > 0) {
+        insights.push(`Mit ${tagLabel} lag dein ${metricLabel} im Schnitt um ${diff.toFixed(1)} Punkte höher als ohne.`);
+      } else {
+        insights.push(`Mit ${tagLabel} lag dein ${metricLabel} im Schnitt um ${Math.abs(diff).toFixed(1)} Punkte niedriger.`);
+      }
+    });
+  });
+  return insights;
 }
 
 function renderWelcomeScreen() {

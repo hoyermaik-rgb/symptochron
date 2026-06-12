@@ -45,26 +45,14 @@
     <button class="nav-tab" data-tab="diary" onclick="switchTab('diary')">
       <span class="tab-icon">📋</span>Tagebuch
     </button>
-    <button class="nav-tab" data-tab="rls" onclick="switchTab('rls')">
-      <span class="tab-icon">🦵</span>RLS
-    </button>
     <button class="nav-tab" data-tab="meds" onclick="switchTab('meds')">
       <span class="tab-icon">💊</span>Medikamente
     </button>
-    <button class="nav-tab" data-tab="analysis" onclick="switchTab('analysis')">
-      <span class="tab-icon">📊</span>Analyse
+    <button class="nav-tab" data-tab="mood" data-module-toggle="mood" onclick="switchTab('mood')">
+      <span class="tab-icon">🧠</span>Mood
     </button>
     <button class="nav-tab" data-tab="charts" onclick="switchTab('charts')">
       <span class="tab-icon">📈</span>Statistik
-    </button>
-    <button class="nav-tab" data-tab="export" onclick="switchTab('export')">
-      <span class="tab-icon">📤</span>Daten
-    </button>
-    <button class="nav-tab" data-tab="mood" onclick="switchTab('mood')">
-      <span class="tab-icon">🧠</span>Mood
-    </button>
-    <button class="nav-tab" data-tab="sos" onclick="switchTab('sos')">
-      <span class="tab-icon">🆘</span>SOS
     </button>
   </nav>
 
@@ -155,6 +143,12 @@
       </div>
 
       <div class="week-strip" id="weekStrip"></div>
+
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+        <button class="btn-secondary" type="button" style="padding: 6px 12px; font-size: 13px;" onclick="copyFromYesterday()">
+          <span style="margin-right: 4px;">🔄</span>Wie gestern ausfüllen
+        </button>
+      </div>
 
       <!-- Schritt 1: Schmerz & RLS -->
       <div class="card diary-step">

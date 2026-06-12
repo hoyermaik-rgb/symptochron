@@ -158,6 +158,7 @@ function updateHeaderDate() {
 function switchTab(name) {
   document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.menu-action').forEach(b => b.classList.remove('active'));
   const section = document.getElementById('tab-' + name);
   if (!section) return;
   section.classList.add('active');

@@ -1,4 +1,50 @@
-// ── UI-Extras: Hell/Dunkel-Modus + Onboarding ───────────
+// ── UI-Extras: Hell/Dunkel-Modus + Onboarding + Einstellungen ───────────
+
+const PREFS_KEY = 'symptochron_prefs';
+
+function getUiPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(PREFS_KEY) || '{"fontScale":"normal", "modules":{"rls":true,"mood":true,"bp":true,"sos":true}}');
+  } catch {
+    return { fontScale: 'normal', modules: { rls: true, mood: true, bp: true, sos: true } };
+  }
+}
+
+function saveUiPrefs(p) {
+  localStorage.setItem(PREFS_KEY, JSON.stringify(p));
+  applyUiPrefs();
+}
+
+function applyUiPrefs() {
+  const p = getUiPrefs();
+  const html = document.documentElement;
+  
+  if (p.fontScale === 'small') html.style.setProperty('--font-scale', '0.9');
+  else if (p.fontScale === 'large') html.style.setProperty('--font-scale', '1.15');
+  else html.style.setProperty('--font-scale', '1');
+  
+  document.querySelectorAll('[data-module-toggle]').forEach(el => {
+    const mod = el.dataset.moduleToggle;
+    if (p.modules[mod] === false) {
+      el.style.display = 'none';
+    } else {
+      el.style.display = '';
+    }
+  });
+}
+
+function setUiFontScale(scale) {
+  const p = getUiPrefs();
+  p.fontScale = scale;
+  saveUiPrefs(p);
+  if (typeof renderAppMenu === 'function') renderAppMenu();
+}
+
+function toggleUiModule(mod, isVisible) {
+  const p = getUiPrefs();
+  p.modules[mod] = isVisible;
+  saveUiPrefs(p);
+}
 
 // ── Theme ───────────────────────────────────────────────
 const THEME_KEY = 'symptochron_theme';
@@ -191,6 +237,7 @@ if (isPinEnabled()) {
 }
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
+  applyUiPrefs();
   if (shouldShowOnboarding() && !isPinEnabled()) {
     setTimeout(openOnboarding, 400);
   }
