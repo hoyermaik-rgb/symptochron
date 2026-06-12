@@ -335,6 +335,13 @@ function renderMoodChart() {
   const canvas = document.getElementById('moodTrendChart');
   if (!canvas) return;
 
+  if (typeof Chart === 'undefined') {
+    if (canvas.parentElement) {
+      canvas.parentElement.innerHTML = '<div class="empty-state" style="padding:20px"><p>Der Stimmungsverlauf ist ohne Chart.js nicht verfügbar.</p></div>';
+    }
+    return;
+  }
+
   const moodStore = getMoodStore();
   const dates = Object.keys(moodStore).sort().slice(-30); // letzte 30 Tage
 
@@ -636,6 +643,37 @@ window.initMoodTab = function() {
     }
   }, 100);
 };
+
+const GAD7_QUESTIONS = [
+  'Sich nervös, ängstlich oder angespannt fühlen',
+  'Nicht in der Lage sein, Sorgen zu stoppen oder zu kontrollieren',
+  'Sich zu viele Sorgen über verschiedene Dinge machen',
+  'Schwierigkeiten, sich zu entspannen',
+  'So unruhig sein, dass es schwerfällt, still zu sitzen',
+  'Leicht verärgert oder gereizt sein',
+  'Angst haben, dass etwas Schlimmes passieren könnte'
+];
+
+const GAD7_OPTIONS = [
+  { value: 0, label: 'Überhaupt nicht' },
+  { value: 1, label: 'An einzelnen Tagen' },
+  { value: 2, label: 'An mehr als der Hälfte der Tage' },
+  { value: 3, label: 'Beinahe jeden Tag' }
+];
+
+function getGad7Store() {
+  try {
+    return JSON.parse(localStorage.getItem('symptochron_gad7') || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveGad7Store(data) {
+  localStorage.setItem('symptochron_gad7', JSON.stringify(data));
+}
+
+let gad7Answers = Array(7).fill(null);
 
 // ── GAD-7 Funktionen ─────────────────────────────
 function buildGad7Questions() {

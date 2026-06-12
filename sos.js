@@ -253,8 +253,16 @@ function triggerSOS() {
 let deferredPrompt = null;
 
 window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
+  // Nicht mehr unterdrücken: so kann der Browser wieder selbst entscheiden,
+  // ob ein automatischer Installationshinweis angezeigt wird.
   deferredPrompt = e;
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  if (typeof showToast === 'function') {
+    showToast('✅ App wurde installiert');
+  }
 });
 
 function promptInstallSOS() {

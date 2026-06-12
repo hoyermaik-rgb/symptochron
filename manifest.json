@@ -1,11 +1,14 @@
 {
+  "id": "./index.html",
   "name": "SymptoChron",
   "short_name": "SymptoChron",
   "description": "Health Tracker für Symptome, RLS und Medikamente – Klarheit. Orientierung. Kontrolle.",
-  "start_url": ".",
+  "lang": "de-DE",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#00d4ff",
+  "background_color": "#0a1628",
+  "theme_color": "#0a1628",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -44,8 +47,8 @@
     {
       "name": "Notruf 112",
       "short_name": "Notruf",
-      "description": "Sofort den Notruf wählen",
-      "url": "tel:112",
+      "description": "Öffnet den SOS-Bereich für den schnellen Notruf",
+      "url": "./index.html#sos",
       "icons": [
         {
           "src": "icons/icon-192.png",

@@ -129,18 +129,15 @@ function initImportZone() {
 }
 
 function initApp() {
+  currentDate = todayStr();
   updateHeaderDate();
-  buildTimeBlocks();
-  buildInfluenceTags();
-  buildWeekStrip();
-  populateRlsSymptomSelect();
-  buildSurveyQuestions();
-  renderMedList();
-  loadCurrentEntry();
-  updateNavLabel();
-  initRlsTab();
-  loadRlsModeSettings();
-  refreshMedInteractionAlert();
+  if (typeof ensureDiaryReady === 'function') ensureDiaryReady({ forceToday: true });
+  if (typeof populateRlsSymptomSelect === 'function') populateRlsSymptomSelect();
+  if (typeof buildSurveyQuestions === 'function') buildSurveyQuestions();
+  if (typeof renderMedList === 'function') renderMedList();
+  if (typeof initRlsTab === 'function') initRlsTab();
+  if (typeof loadRlsModeSettings === 'function') loadRlsModeSettings();
+  if (typeof refreshMedInteractionAlert === 'function') refreshMedInteractionAlert();
   initImportZone();
   if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
   applyInitialRoute();
@@ -166,8 +163,13 @@ function switchTab(name) {
   if (location.hash !== `#${name}`) {
     history.replaceState(null, '', `#${name}`);
   }
-  window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+  try {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  } catch {
+    window.scrollTo(0, 0);
+  }
   if (name === 'welcome' && typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
+  if (name === 'diary' && typeof ensureDiaryReady === 'function') ensureDiaryReady();
   if (name === 'charts') renderCharts();
   if (name === 'rls') refreshRlsTab();
   if (name === 'meds') renderMedList();
@@ -176,7 +178,7 @@ function switchTab(name) {
 
 function applyInitialRoute() {
   const route = (location.hash || '').replace('#', '').trim();
-  const validTabs = ['welcome', 'diary', 'rls', 'meds', 'analysis', 'charts', 'export'];
+  const validTabs = ['welcome', 'diary', 'rls', 'meds', 'mood', 'sos', 'analysis', 'charts', 'export'];
   if (validTabs.includes(route)) {
     switchTab(route);
   } else {
@@ -217,4 +219,16 @@ function registerServiceWorker() {
 }
 
 window.addEventListener('hashchange', applyInitialRoute);
+window.addEventListener('focus', () => {
+  updateHeaderDate();
+  if (typeof updateNavLabel === 'function') updateNavLabel();
+  if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    updateHeaderDate();
+    if (typeof updateNavLabel === 'function') updateNavLabel();
+    if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
+  }
+});
 registerServiceWorker();

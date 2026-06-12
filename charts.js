@@ -455,6 +455,21 @@ function renderCharts() {
   document.getElementById('statAvgRls').textContent  = countRls  ? (totalRls/countRls).toFixed(1)   : '–';
   document.getElementById('statDays').textContent    = dates.length;
 
+  if (typeof Chart === 'undefined') {
+    const mainCanvas = document.getElementById('mainChart');
+    const todCanvas = document.getElementById('todChart');
+    if (mainCanvas?.parentElement) {
+      mainCanvas.parentElement.innerHTML = '<div class="empty-state" style="padding:20px"><p>Diagramme konnten nicht geladen werden. Bitte App mit Internetverbindung oder lokal eingebundener Chart.js-Datei öffnen.</p></div>';
+    }
+    if (todCanvas?.parentElement) {
+      todCanvas.parentElement.innerHTML = '<div class="empty-state" style="padding:20px"><p>Tageszeit-Diagramm ist ohne Chart.js nicht verfügbar.</p></div>';
+    }
+    renderCorrelations();
+    renderTagPatternInsights();
+    renderMedEffectInsights();
+    return;
+  }
+
   // Determine date range
   const today = new Date();
   let days;

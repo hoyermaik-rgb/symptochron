@@ -1,6 +1,6 @@
-// ── Service Worker – Schmerz & RLS Tagebuch ──
-const CACHE_NAME = 'symptochron-modern-v3';
-const ASSETS = [
+// ── Service Worker – SymptoChron ─────────────────────
+const CACHE_NAME = 'symptochron-modern-v5';
+const APP_SHELL = [
   './',
   './index.html',
   './app.js',
@@ -14,41 +14,60 @@ const ASSETS = [
   './patient.js',
   './rls.js',
   './scanner.js',
+  './mood.js',
+  './sos.js',
   './style.css',
   './manifest.json',
-  'https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=DM+Mono:wght@300;400;500&display=swap',
-  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
+  './vendor/chart.umd.min.js',
+  './vendor/jspdf.umd.min.js',
+  './vendor/html5-qrcode.min.js',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-1024.png',
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS.filter(u => !u.startsWith('https://fonts'))))
+      .then(cache => cache.addAll(APP_SHELL))
       .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+
+  // Externe Ressourcen nicht über den SW erzwingen – das verhindert Installationsprobleme.
+  if (url.origin !== self.location.origin) return;
+
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
-      return fetch(event.request).then(response => {
-        if (response && response.status === 200 && response.type !== 'opaque') {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => cached || new Response('Offline', { status: 503 }));
+
+      return fetch(event.request)
+        .then(response => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => {
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html');
+          }
+          return new Response('Offline', { status: 503, statusText: 'Offline' });
+        });
     })
   );
 });

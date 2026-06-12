@@ -467,9 +467,6 @@
     };
 
     if (!name) return { error: '⚠️ Bitte Medikamentenname eingeben' };
-    if (!Object.values(schedule).some(v => v > 0)) {
-      return { error: '⚠️ Bitte mindestens eine Einnahmezeit angeben' };
-    }
 
     return {
       id: Date.now().toString(36),

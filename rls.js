@@ -119,15 +119,13 @@ function shouldShowWeeklySurvey() {
 }
 
 function isSameCalendarWeek(d1, d2) {
-  const a = parseDate(d1);
-  const b = parseDate(d2);
-  const day = x => (x.getDay() + 6) % 7;
-  const thursday = x => {
-    const d = new Date(x);
-    d.setDate(d.getDate() - day(d) + 3);
-    return d.getFullYear() + '-' + d.getMonth();
+  const day = x => (x.getDay() + 6) % 7; // Montag = 0
+  const weekKey = str => {
+    const d = parseDate(str);
+    d.setDate(d.getDate() - day(d) + 3); // Donnerstag der gleichen ISO-Woche
+    return formatLocalDate(d);
   };
-  return thursday(a) === thursday(b) && a.getFullYear() === b.getFullYear();
+  return weekKey(d1) === weekKey(d2);
 }
 
 function isSurveyDue() {

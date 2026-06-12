@@ -1,6 +1,7 @@
 // ── Week Strip ──────────────────────────────────
 function buildWeekStrip() {
   const strip = document.getElementById('weekStrip');
+  if (!strip) return;
   strip.innerHTML = '';
   const today = todayStr();
   const store = getStore();
@@ -30,6 +31,7 @@ function buildWeekStrip() {
 // ── Time Blocks ─────────────────────────────────
 function buildTimeBlocks() {
   const grid = document.getElementById('timeBlocksGrid');
+  if (!grid) return;
   grid.innerHTML = '';
   TIMES.forEach(t => {
     const block = document.createElement('div');
@@ -75,6 +77,7 @@ function scoreLabel(n) {
 function updateScoreBadge(timeKey, type) {
   const sel = document.getElementById(`${timeKey}_${type}`);
   const badge = document.getElementById(`${timeKey}_${type}_badge`);
+  if (!sel || !badge) return;
   const val = sel.value;
   badge.textContent = val === '' ? '–' : val;
   badge.className = `score-badge ${type}${val !== '' ? ' score-' + val : ''}`;
@@ -140,28 +143,36 @@ function copyFromYesterday() {
 
   showToast('Werte von gestern übernommen (noch nicht gespeichert).');
 }
+
+function loadCurrentEntry() {
   const store = getStore();
   const entry = store[currentDate] || {};
 
   TIMES.forEach(t => {
     const pSel = document.getElementById(`${t.key}_pain`);
     const rSel = document.getElementById(`${t.key}_rls`);
+    if (!pSel || !rSel) return;
     pSel.value = entry[`${t.key}_pain`] !== undefined ? entry[`${t.key}_pain`] : '';
     rSel.value = entry[`${t.key}_rls`]  !== undefined ? entry[`${t.key}_rls`]  : '';
     updateScoreBadge(t.key, 'pain');
     updateScoreBadge(t.key, 'rls');
   });
 
-  document.getElementById('dailyNotes').value = entry.notes || '';
-  document.getElementById('sleepHours').value = entry.sleepHours !== undefined ? entry.sleepHours : '';
-  document.getElementById('sleepQuality').value = entry.sleepQuality !== undefined ? entry.sleepQuality : '';
+  const notesEl = document.getElementById('dailyNotes');
+  const sleepHoursEl = document.getElementById('sleepHours');
+  const sleepQualityEl = document.getElementById('sleepQuality');
+  if (notesEl) notesEl.value = entry.notes || '';
+  if (sleepHoursEl) sleepHoursEl.value = entry.sleepHours !== undefined ? entry.sleepHours : '';
+  if (sleepQualityEl) sleepQualityEl.value = entry.sleepQuality !== undefined ? entry.sleepQuality : '';
 
   const factors = entry.factors || {};
   document.querySelectorAll('.tag-btn[data-factor]').forEach(btn => {
     btn.classList.toggle('on', !!factors[btn.dataset.factor]);
   });
 
-  renderMedIntakeForDiary(entry.medsTaken || [], entry.medsTakenTimes || {});
+  if (typeof renderMedIntakeForDiary === 'function') {
+    renderMedIntakeForDiary(entry.medsTaken || [], entry.medsTakenTimes || {});
+  }
 }
 
 function saveEntry() {
@@ -239,7 +250,28 @@ function refreshDiary() {
   buildWeekStrip();
   loadCurrentEntry();
   updateNavLabel();
-  document.getElementById('datePickerInput').value = currentDate;
+  const picker = document.getElementById('datePickerInput');
+  if (picker) picker.value = currentDate;
+}
+
+function ensureDiaryReady(options) {
+  const opts = options || {};
+  if (opts.forceToday || !currentDate || !/^\d{4}-\d{2}-\d{2}$/.test(currentDate)) {
+    currentDate = todayStr();
+  }
+
+  const grid = document.getElementById('timeBlocksGrid');
+  const tags = document.getElementById('influenceTags');
+  if (!grid) return;
+
+  if (!document.getElementById('morning_pain') || !document.getElementById('night_rls')) {
+    buildTimeBlocks();
+  }
+  if (tags && !tags.querySelector('[data-factor]')) {
+    buildInfluenceTags();
+  }
+
+  refreshDiary();
 }
 
 // ── Influence tags & med intake ─────────────────
@@ -301,10 +333,12 @@ function startVoiceInput(fieldId, btn) {
 }
 
 function updateNavLabel() {
-  document.getElementById('navDateLabel').textContent = formatDateLabel(currentDate);
-  document.getElementById('navDateSub').textContent =
-    currentDate === todayStr() ? 'Heute' : '';
-  document.getElementById('datePickerInput').value = currentDate;
+  const navDateLabel = document.getElementById('navDateLabel');
+  const navDateSub = document.getElementById('navDateSub');
+  const datePickerInput = document.getElementById('datePickerInput');
+  if (navDateLabel) navDateLabel.textContent = formatDateLabel(currentDate);
+  if (navDateSub) navDateSub.textContent = currentDate === todayStr() ? 'Heute' : '';
+  if (datePickerInput) datePickerInput.value = currentDate;
   var todayBtn = document.getElementById('todayBtn');
   if (todayBtn) todayBtn.classList.toggle('hidden', currentDate === todayStr());
 }

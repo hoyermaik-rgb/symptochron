@@ -1,6 +1,7 @@
 // ── Export CSV ───────────────────────────────────
 function exportCSV() {
   const store = getStore();
+  const moodStore = typeof getMoodStore === 'function' ? getMoodStore() : {};
   const dates = Object.keys(store).sort();
 
   if (dates.length === 0) { showToast('⚠️ Keine Daten zum Exportieren'); return; }
@@ -8,6 +9,7 @@ function exportCSV() {
   const header = 'datum,morgen_schmerz,morgen_rls,mittag_schmerz,mittag_rls,abend_schmerz,abend_rls,nacht_schmerz,nacht_rls,schlafdauer_stunden,schlafqualitaet_1_5,stimmung,energie,angst,notizen';
   const rows = dates.map(d => {
     const e = store[d];
+    const m = moodStore[d] || {};
     const cols = [
       d,
       e.morning_pain ?? '',
@@ -20,6 +22,9 @@ function exportCSV() {
       e.night_rls    ?? '',
       e.sleepHours ?? '',
       e.sleepQuality ?? '',
+      m.stimmung ?? '',
+      m.energie ?? '',
+      m.angst ?? '',
       `"${(e.notes || '').replace(/"/g, '""')}"`,
     ];
     return cols.join(',');
@@ -40,10 +45,14 @@ function exportJSON() {
     rlsDaily: getRlsDaily(),
     rlsSurveys: getRlsSurveys(),
     bloodPressure: typeof getBloodPressureEntries === 'function' ? getBloodPressureEntries() : [],
+    reminderSettings: typeof getReminderSettings === 'function' ? getReminderSettings() : (JSON.parse(localStorage.getItem('painDiaryReminderSettings') || '{"enabled":false}')),
     mood: typeof getMoodStore === 'function' ? getMoodStore() : {},
+    phq9: typeof getPhq9Store === 'function' ? getPhq9Store() : (JSON.parse(localStorage.getItem('symptochron_phq9') || '{}')),
+    gad7: typeof getGad7Store === 'function' ? getGad7Store() : (JSON.parse(localStorage.getItem('symptochron_gad7') || '{}')),
+    crisis: typeof getCrisisData === 'function' ? getCrisisData() : (JSON.parse(localStorage.getItem('symptochron_crisis') || '{}')),
     sos: typeof getSOSData === 'function' ? getSOSData() : (JSON.parse(localStorage.getItem('symptochron_sos_data') || '{}')),
     exportedAt: new Date().toISOString(),
-    version: 6,
+    version: 7,
   };
   downloadFile(JSON.stringify(data, null, 2), `schmerztagebuch_backup_${todayStr()}.json`, 'application/json');
   showToast('✅ JSON-Backup erstellt');
@@ -880,14 +889,35 @@ function importData(input) {
           var bp = mergeBloodPressureEntries(getBloodPressureEntries(), data.bloodPressure);
           saveBloodPressureEntries(bp);
         }
+        if (data.reminderSettings) {
+          localStorage.setItem('painDiaryReminderSettings', JSON.stringify(data.reminderSettings));
+          if (typeof scheduleDailyReminder === 'function') scheduleDailyReminder();
+        }
+        if (data.mood) {
+          var moodStore = (typeof getMoodStore === 'function' ? getMoodStore() : {});
+          localStorage.setItem('symptochron_mood', JSON.stringify(Object.assign(moodStore, data.mood)));
+        }
+        if (data.phq9) {
+          var phq9Store = (typeof getPhq9Store === 'function' ? getPhq9Store() : JSON.parse(localStorage.getItem('symptochron_phq9') || '{}'));
+          localStorage.setItem('symptochron_phq9', JSON.stringify(Object.assign(phq9Store, data.phq9)));
+        }
+        if (data.gad7) {
+          var gad7Store = (typeof getGad7Store === 'function' ? getGad7Store() : JSON.parse(localStorage.getItem('symptochron_gad7') || '{}'));
+          localStorage.setItem('symptochron_gad7', JSON.stringify(Object.assign(gad7Store, data.gad7)));
+        }
+        if (data.crisis) {
+          localStorage.setItem('symptochron_crisis', JSON.stringify(data.crisis));
+        }
         if (data.sos) {
           localStorage.setItem('symptochron_sos_data', JSON.stringify(data.sos));
         }
         buildWeekStrip();
         if (typeof renderMedList === 'function') renderMedList();
         if (typeof refreshDiary === 'function') refreshDiary();
-      if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
+        if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
         if (typeof initRlsTab === 'function') initRlsTab();
+        if (typeof initMoodTab === 'function') initMoodTab();
+        if (typeof loadSOSData === 'function') loadSOSData();
         showToast('✅ JSON importiert');
       } catch(ex) {
         showToast('❌ Ungültige JSON-Datei');
@@ -979,20 +1009,36 @@ function parseCSVLine(line) {
 // ── Clear Data ───────────────────────────────────
 function clearAllData() {
   if (!confirm('Wirklich ALLE Daten löschen? Diese Aktion kann nicht rückgängig gemacht werden!')) return;
-  localStorage.removeItem('painDiary');
-  localStorage.removeItem('painDiaryMeds');
-  localStorage.removeItem('painDiarySettings');
-  localStorage.removeItem('painDiaryRlsDaily');
-  localStorage.removeItem('painDiaryRlsSurvey');
-  localStorage.removeItem('painDiaryBloodPressure');
-  localStorage.removeItem('painDiaryReminderSettings');
-  localStorage.removeItem('symptochron_patient_name');
-  localStorage.removeItem('symptochron_patient_bday');
-  buildWeekStrip();
-  loadCurrentEntry();
+
+  [
+    'painDiary',
+    'painDiaryMeds',
+    'painDiarySettings',
+    'painDiaryRlsDaily',
+    'painDiaryRlsSurvey',
+    'painDiaryBloodPressure',
+    'painDiaryReminderSettings',
+    'symptochron_patient_name',
+    'symptochron_patient_bday',
+    'symptochron_mood',
+    'symptochron_phq9',
+    'symptochron_gad7',
+    'symptochron_crisis',
+    'symptochron_sos_data',
+    'symptochron_onboarded',
+    'symptochron_prefs',
+    'symptochron_theme',
+    'symptochron_pin_hash'
+  ].forEach(key => localStorage.removeItem(key));
+
+  if (typeof scheduleDailyReminder === 'function') scheduleDailyReminder();
+  if (typeof buildWeekStrip === 'function') buildWeekStrip();
+  if (typeof loadCurrentEntry === 'function') loadCurrentEntry();
   if (typeof renderMedList === 'function') renderMedList();
   if (typeof loadPatientData === 'function') loadPatientData();
   if (typeof initRlsTab === 'function') initRlsTab();
+  if (typeof refreshMoodTab === 'function') refreshMoodTab();
+  if (typeof loadSOSData === 'function') loadSOSData();
   if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
   showToast('🗑 Alle Daten gelöscht');
 }

@@ -98,6 +98,9 @@ Daten werden im Browser gespeichert über `localStorage`.
 - `sw.js` – Service Worker
 - `manifest.json` – PWA-Metadaten
 - `mood.js` – Stimmungs- und Mood-Tracking (MoodPath)
+- `vendor/chart.umd.min.js` – lokal eingebundene Chart.js-Bibliothek
+- `vendor/jspdf.umd.min.js` – lokal eingebundene jsPDF-Bibliothek
+- `vendor/html5-qrcode.min.js` – lokal eingebundene Scanner-Bibliothek
 
 ### Dokumentation
 - `TECHNISCHE_DOKUMENTATION.md` – ausführliche technische Dokumentation
