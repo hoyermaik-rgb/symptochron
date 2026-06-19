@@ -19,6 +19,7 @@ function getTodayMedSlots() {
     { key: 'night', icon: '🌙', label: 'Nachts' },
   ];
   meds.forEach(m => {
+    if (!m.active) return;
     const sched = m.schedule || {};
     let scheduled = false;
     slotMeta.forEach(s => {
@@ -41,6 +42,9 @@ function getTodayTakenIds() {
 function saveTodayTakenIds(ids, times) {
   const store = getStore();
   const entry = store[todayStr()] || {};
+  if (typeof adjustInventoryForIntakeChange === 'function') {
+    adjustInventoryForIntakeChange(todayStr(), ids);
+  }
   if (ids.length) entry.medsTaken = ids;
   else delete entry.medsTaken;
   if (times && Object.keys(times).length) entry.medsTakenTimes = times;
@@ -275,6 +279,11 @@ function renderWelcomeScreen() {
       sub.textContent = 'Schön, dass du da bist. Hier siehst du auf einen Blick, was heute noch zu tun ist.';
     }
   }
+
+  // Fragebögen-Reminder prüfen
+  if (typeof checkSurveysWelcomeReminder === 'function') {
+    checkSurveysWelcomeReminder();
+  }
 }
 
 // ── Mood Status auf Welcome ───────────────────────
@@ -365,22 +374,45 @@ function renderWelcomeMedSection() {
   quickList.innerHTML = slots.map(s => {
     const checked = isSlotTaken(taken, s.id, s.med.id);
     const isFlex = !s.slot;
-    const timeNote = isFlex && checked && times[s.id] ? ` · 🕐 ${times[s.id]}` : '';
+
+    if (isFlex) {
+      const timeList = times[s.id] ? times[s.id].split(', ').filter(Boolean) : [];
+      const timeChips = timeList.map(t => `
+        <span class="time-badge" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(0,212,170,0.15); color: var(--accent-2); padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">
+          ${t}
+          <span onclick="event.stopPropagation(); removePrnIntake('${todayStr()}', '${s.med.id}', '${t}')" style="cursor: pointer; font-weight: bold; margin-left: 2px; color: var(--accent-pain);">✕</span>
+        </span>
+      `).join('');
+
+      return `<div class="med-chip welcome-med-chip" style="display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-card); cursor: default; box-sizing: border-box;">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <div class="med-chip-body" style="text-align: left;">
+            <div class="med-chip-name" style="font-weight: 600; color: var(--text-1);">${escHtml(s.med.name)} (Bedarf)</div>
+            <div class="med-chip-dose" style="color: var(--text-3); font-size: 11px;">${s.med.dose ? escHtml(s.med.dose) : 'Bedarfsmedikation'}</div>
+          </div>
+          <button type="button" class="btn-primary" onclick="addPrnIntake('${todayStr()}', '${s.med.id}')" style="padding: 4px 10px; font-size: 11px; background: var(--accent-1); border-radius: 8px; width: auto; margin: 0; display: inline-flex; align-items: center; gap: 4px;">
+            ⚡ Eintragen
+          </button>
+        </div>
+        ${timeList.length > 0 ? `
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 6px; width: 100%;">
+            <span style="font-size: 11px; color: var(--text-3); align-self: center;">Heute:</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px;">${timeChips}</div>
+          </div>
+        ` : ''}
+      </div>`;
+    }
+
     const slotLabel = s.slot ? `${s.slot.icon} ${s.slot.label} · ${s.qty}×` : '📌 bei Bedarf';
     return `<button type="button" class="med-chip welcome-med-chip ${checked ? 'taken' : ''}"
         onclick="toggleWelcomeMedSlot('${s.id}')">
       <span class="med-chip-check">${checked ? '✓' : ''}</span>
       <span class="med-chip-body">
         <span class="med-chip-name">${escHtml(s.med.name)}</span>
-        <span class="med-chip-dose">${slotLabel}${s.med.dose ? ' · ' + escHtml(s.med.dose) : ''}${timeNote}</span>
+        <span class="med-chip-dose">${slotLabel}${s.med.dose ? ' · ' + escHtml(s.med.dose) : ''}</span>
       </span>
     </button>`;
   }).join('');
-}
-
-function nowHHMM() {
-  const now = new Date();
-  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
 
 function isFlexSlotId(slotId) {
@@ -407,7 +439,7 @@ function toggleWelcomeMedSlot(slotId) {
     // Hinzufügen
     taken.push(slotId);
     if (slotInfo && !slotInfo.slot) {
-      takenTimes[slotId] = nowHHMM();
+      takenTimes[slotId] = typeof currentTimeHHMM === 'function' ? currentTimeHHMM() : '00:00';
     }
   }
 
@@ -422,6 +454,10 @@ function toggleWelcomeMedSlot(slotId) {
     entry.medsTakenTimes = takenTimes;
   } else {
     delete entry.medsTakenTimes;
+  }
+
+  if (typeof adjustInventoryForIntakeChange === 'function') {
+    adjustInventoryForIntakeChange(today, taken);
   }
 
   entry.updated = new Date().toISOString();
@@ -460,7 +496,7 @@ function confirmAllMedsToday() {
 
       // Zeitstempel nur bei Bedarfsmedikamenten setzen
       if (!s.slot && !takenTimes[s.id]) {
-        takenTimes[s.id] = nowHHMM();
+        takenTimes[s.id] = typeof currentTimeHHMM === 'function' ? currentTimeHHMM() : '00:00';
       }
     }
   });
@@ -471,6 +507,9 @@ function confirmAllMedsToday() {
   }
 
   // In das Tagebuch-Objekt schreiben
+  if (typeof adjustInventoryForIntakeChange === 'function') {
+    adjustInventoryForIntakeChange(today, taken);
+  }
   entry.medsTaken = taken;
   if (Object.keys(takenTimes).length > 0) {
     entry.medsTakenTimes = takenTimes;
@@ -494,3 +533,112 @@ function confirmAllMedsToday() {
 
   if (typeof showToast === 'function') showToast('✅ Alle Einnahmen für heute bestätigt');
 }
+
+// ── Willkommens-Reminder für fällige Fragebögen ────
+function checkSurveysWelcomeReminder() {
+  const banner = document.getElementById('welcomeSurveyReminder');
+  if (!banner) return;
+
+  if (typeof checkMoodSurveysDue !== 'function') {
+    banner.style.display = 'none';
+    return;
+  }
+
+  const status = checkMoodSurveysDue();
+  const due = status.phqDue || status.gadDue;
+
+  if (due) {
+    let msg = '📋 <strong>Erinnerung:</strong> ';
+    if (status.phqDue && status.gadDue) {
+      msg += 'Der PHQ-9 Depressionsfragebogen und der GAD-7 Angstfragebogen sind fällig.';
+    } else if (status.phqDue) {
+      msg += 'Der PHQ-9 Depressionsfragebogen ist fällig.';
+    } else {
+      msg += 'Der GAD-7 Angstfragebogen ist fällig.';
+    }
+    msg += ' Bitte nimm dir kurz Zeit zum Ausfüllen. <strong>Jetzt starten ›</strong>';
+
+    banner.innerHTML = msg;
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+window.checkSurveysWelcomeReminder = checkSurveysWelcomeReminder;
+
+function addPrnIntake(date, medId) {
+  const store = getStore();
+  const entry = store[date] || {};
+  let taken = Array.isArray(entry.medsTaken) ? [...entry.medsTaken] : [];
+  let takenTimes = entry.medsTakenTimes ? { ...entry.medsTakenTimes } : {};
+
+  const time = typeof currentTimeHHMM === 'function' ? currentTimeHHMM() : '00:00';
+  let existingTimes = takenTimes[medId] ? takenTimes[medId].split(', ').filter(Boolean) : [];
+  existingTimes.push(time);
+  takenTimes[medId] = existingTimes.join(', ');
+
+  if (!taken.includes(medId)) {
+    taken.push(medId);
+  }
+
+  if (typeof adjustInventoryForIntakeChange === 'function') {
+    adjustInventoryForIntakeChange(date, taken, takenTimes);
+  }
+
+  entry.medsTaken = taken;
+  entry.medsTakenTimes = takenTimes;
+  entry.updated = new Date().toISOString();
+  store[date] = entry;
+  saveStore(store);
+
+  if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
+  if (typeof currentDate !== 'undefined' && currentDate === date && typeof refreshDiary === 'function') {
+    refreshDiary();
+  }
+}
+
+function removePrnIntake(date, medId, time) {
+  const store = getStore();
+  const entry = store[date] || {};
+  let taken = Array.isArray(entry.medsTaken) ? [...entry.medsTaken] : [];
+  let takenTimes = entry.medsTakenTimes ? { ...entry.medsTakenTimes } : {};
+
+  let existingTimes = takenTimes[medId] ? takenTimes[medId].split(', ').filter(Boolean) : [];
+  existingTimes = existingTimes.filter(t => t !== time);
+
+  if (existingTimes.length > 0) {
+    takenTimes[medId] = existingTimes.join(', ');
+  } else {
+    delete takenTimes[medId];
+    taken = taken.filter(id => id !== medId);
+  }
+
+  if (typeof adjustInventoryForIntakeChange === 'function') {
+    adjustInventoryForIntakeChange(date, taken, takenTimes);
+  }
+
+  if (taken.length > 0) {
+    entry.medsTaken = taken;
+  } else {
+    delete entry.medsTaken;
+  }
+
+  if (Object.keys(takenTimes).length > 0) {
+    entry.medsTakenTimes = takenTimes;
+  } else {
+    delete entry.medsTakenTimes;
+  }
+
+  entry.updated = new Date().toISOString();
+  store[date] = entry;
+  saveStore(store);
+
+  if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
+  if (typeof currentDate !== 'undefined' && currentDate === date && typeof refreshDiary === 'function') {
+    refreshDiary();
+  }
+}
+
+window.addPrnIntake = addPrnIntake;
+window.removePrnIntake = removePrnIntake;

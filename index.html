@@ -25,10 +25,10 @@
   <!-- ── HEADER ─────────────────────────────── -->
   <header class="header">
     <div class="header-brand">
-      <div class="header-logo">🩺</div>
+      <img src="icons/icon-193.png" alt="Logo" onerror="this.style.display='none'" style="width: 100px; height: auto; margin-right: 10px; border-radius: 16px;">
       <div>
         <div class="header-title">SymptoChron</div>
-        <div class="header-subtitle">Schmerz- &amp; RLS-Tagebuch</div>
+        <div class="header-subtitle">Schmerz, RLS, Schlaf & Medikation</div>
       </div>
     </div>
     <div class="header-actions">
@@ -69,6 +69,9 @@
         <span class="streak-badge" id="welcomeStreak" style="display:none">🔥</span>
         <p class="welcome-sub" id="welcomeSub">Schön, dass du da bist. Hier siehst du auf einen Blick, was heute noch zu tun ist.</p>
       </div>
+
+      <!-- Info-Banner für fällige Depressions- & Angstfragebögen -->
+      <div id="welcomeSurveyReminder" class="info-banner warn" style="display:none; cursor:pointer;" onclick="switchTab('mood')"></div>
 
       <div class="welcome-status-grid">
         <div class="welcome-status-card" id="welcomeDiaryCard" onclick="switchTab('diary')">
@@ -164,6 +167,63 @@
         <div class="time-blocks-grid" id="timeBlocksGrid"></div>
       </div>
 
+      <!-- Schritt 1b: Schmerzlokalisation (Körperkarte) -->
+      <div class="card diary-step">
+        <div class="card-header">
+          <div class="step-badge">1b</div>
+          <div>
+            <div class="card-title">Schmerzlokalisation (Körperkarte)</div>
+            <div class="card-subtitle">Wähle deine Schmerzbereiche aus (wird für den PDF-Bericht benötigt)</div>
+          </div>
+        </div>
+        <div class="bodymap-container" style="display:flex; justify-content:center; gap:30px; margin-top:15px; flex-wrap:wrap;">
+          <!-- Vorderansicht -->
+          <div style="text-align:center;">
+            <div style="font-size:12px; font-weight:bold; color:var(--text-2); margin-bottom:8px;">Vorderseite</div>
+            <svg class="body-svg" viewBox="0 0 100 160" style="width:130px; height:208px;">
+              <circle class="body-part" data-part="front-head" cx="50" cy="15" r="10" />
+              <rect class="body-part" data-part="front-neck" x="46" y="25" width="8" height="6" rx="1" />
+              <rect class="body-part" data-part="front-shoulder-l" x="22" y="32" width="9" height="10" rx="3" />
+              <rect class="body-part" data-part="front-shoulder-r" x="69" y="32" width="9" height="10" rx="3" />
+              <rect class="body-part" data-part="front-chest" x="32" y="32" width="36" height="24" rx="2" />
+              <rect class="body-part" data-part="front-abdomen" x="34" y="57" width="32" height="20" rx="2" />
+              <rect class="body-part" data-part="front-arm-l" x="19" y="43" width="10" height="34" rx="4" />
+              <rect class="body-part" data-part="front-arm-r" x="71" y="43" width="10" height="34" rx="4" />
+              <rect class="body-part" data-part="front-hand-l" x="18" y="78" width="12" height="10" rx="3" />
+              <rect class="body-part" data-part="front-hand-r" x="70" y="78" width="12" height="10" rx="3" />
+              <rect class="body-part" data-part="front-hip-l" x="34" y="78" width="15" height="12" rx="2" />
+              <rect class="body-part" data-part="front-hip-r" x="51" y="78" width="15" height="12" rx="2" />
+              <rect class="body-part" data-part="front-leg-l" x="34" y="91" width="13" height="50" rx="4" />
+              <rect class="body-part" data-part="front-leg-r" x="53" y="91" width="13" height="50" rx="4" />
+              <rect class="body-part" data-part="front-foot-l" x="31" y="142" width="16" height="8" rx="2" />
+              <rect class="body-part" data-part="front-foot-r" x="53" y="142" width="16" height="8" rx="2" />
+            </svg>
+          </div>
+          
+          <!-- Rückansicht -->
+          <div style="text-align:center;">
+            <div style="font-size:12px; font-weight:bold; color:var(--text-2); margin-bottom:8px;">Rückseite</div>
+            <svg class="body-svg" viewBox="0 0 100 160" style="width:130px; height:208px;">
+              <circle class="body-part" data-part="back-head" cx="50" cy="15" r="10" />
+              <rect class="body-part" data-part="back-neck" x="46" y="25" width="8" height="6" rx="1" />
+              <rect class="body-part" data-part="back-shoulder-l" x="22" y="32" width="9" height="10" rx="3" />
+              <rect class="body-part" data-part="back-shoulder-r" x="69" y="32" width="9" height="10" rx="3" />
+              <rect class="body-part" data-part="back-upper" x="32" y="32" width="36" height="24" rx="2" />
+              <rect class="body-part" data-part="back-lower" x="34" y="57" width="32" height="20" rx="2" />
+              <rect class="body-part" data-part="back-arm-l" x="19" y="43" width="10" height="34" rx="4" />
+              <rect class="body-part" data-part="back-arm-r" x="71" y="43" width="10" height="34" rx="4" />
+              <rect class="body-part" data-part="back-hand-l" x="18" y="78" width="12" height="10" rx="3" />
+              <rect class="body-part" data-part="back-hand-r" x="70" y="78" width="12" height="10" rx="3" />
+              <rect class="body-part" data-part="back-glute" x="34" y="78" width="32" height="12" rx="3" />
+              <rect class="body-part" data-part="back-leg-l" x="34" y="91" width="13" height="50" rx="4" />
+              <rect class="body-part" data-part="back-leg-r" x="53" y="91" width="13" height="50" rx="4" />
+              <rect class="body-part" data-part="back-foot-l" x="31" y="142" width="16" height="8" rx="2" />
+              <rect class="body-part" data-part="back-foot-r" x="53" y="142" width="16" height="8" rx="2" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
       <!-- Schritt 2: Medikamente (kompakt) -->
       <div class="card diary-step" id="medIntakeCard" style="display:none">
         <div class="card-header">
@@ -193,23 +253,23 @@
             <div class="card-subtitle">Letzte Nacht</div>
           </div>
         </div>
-      <div class="sleep-grid">
-        <div class="form-group">
-          <label class="form-label" for="sleepHours">Schlafdauer (Stunden)</label>
-          <input class="form-input" type="number" id="sleepHours" min="0" max="24" step="0.5" placeholder="z. B. 6,5" onchange="saveEntry(true)" />
+        <div class="sleep-grid">
+          <div class="form-group">
+            <label class="form-label" for="sleepHours">Schlafdauer (Stunden)</label>
+            <input class="form-input" type="number" id="sleepHours" min="0" max="24" step="0.5" placeholder="z. B. 6,5" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sleepQuality">Schlafqualität</label>
+            <select class="form-input" id="sleepQuality">
+              <option value="">–</option>
+              <option value="1">1 – Sehr schlecht</option>
+              <option value="2">2 – Schlecht</option>
+              <option value="3">3 – Mittel</option>
+              <option value="4">4 – Gut</option>
+              <option value="5">5 – Sehr gut</option>
+            </select>
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label" for="sleepQuality">Schlafqualität</label>
-          <select class="form-input" id="sleepQuality" onchange="saveEntry(true)">
-            <option value="">–</option>
-            <option value="1">1 – Sehr schlecht</option>
-            <option value="2">2 – Schlecht</option>
-            <option value="3">3 – Mittel</option>
-            <option value="4">4 – Gut</option>
-            <option value="5">5 – Sehr gut</option>
-          </select>
-        </div>
-      </div>
       </div>
 
       <!-- Schritt 4: Einflussfaktoren -->
@@ -222,6 +282,30 @@
           </div>
         </div>
         <div class="tag-row" id="influenceTags"></div>
+        <div style="border-top:1px solid var(--border); margin-top:15px; padding-top:15px;">
+          <div style="font-size:13px; font-weight:600; color:var(--text-1); margin-bottom:10px;">Wetter &amp; Luftdruck</div>
+          <div class="form-grid" style="gap:15px;">
+            <div class="form-group">
+              <label class="form-label" for="diaryWeather">Wetterlage</label>
+              <select class="form-input" id="diaryWeather">
+                <option value="">–</option>
+                <option value="sun">☀ Sonnig</option>
+                <option value="cloud">☁ Bewölkt</option>
+                <option value="rain">🌧 Regnerisch</option>
+                <option value="storm">⛈ Gewitter</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="diaryPressure">Luftdruck</label>
+              <select class="form-input" id="diaryPressure">
+                <option value="">–</option>
+                <option value="high">↑ Hoch</option>
+                <option value="normal">→ Normal</option>
+                <option value="low">↓ Tief</option>
+              </select>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Schritt 5: Notizen -->
@@ -234,7 +318,7 @@
           </div>
         </div>
         <div class="input-with-voice">
-          <textarea class="notes-area" id="dailyNotes" placeholder="z. B. starke Unruhe ab 22 Uhr, langer Spaziergang half…" onchange="saveEntry(true)"></textarea>
+          <textarea class="notes-area" id="dailyNotes" placeholder="z. B. starke Unruhe ab 22 Uhr, langer Spaziergang half…"></textarea>
           <button class="voice-btn" type="button" title="Spracheingabe" onclick="startVoiceInput('dailyNotes', this)">🎤</button>
         </div>
       </div>
@@ -470,6 +554,51 @@
         <p class="hw-disclaimer" style="margin-top:10px;font-size:11px;color:var(--text-3)">Hinweis: ersetzt keine ärztliche oder pharmazeutische Beratung.</p>
       </div>
 
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(167,139,250,0.15)">⏰</div>
+          <div>
+            <div class="card-title">Einnahme-Wecker &amp; Erinnerungen</div>
+            <div class="card-subtitle">Lokale Push-Benachrichtigungen verwalten</div>
+          </div>
+        </div>
+        
+        <div style="margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid var(--border);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+              <div style="font-size:13px; font-weight:600; color:var(--text-1)">Erinnerungen aktivieren</div>
+              <div style="font-size:11px; color:var(--text-3)">Benachrichtigt dich, wenn zu den Einnahmezeiten noch Medikamente ausstehen</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button class="btn-secondary" type="button" id="btnToggleNotifications" style="padding:6px 12px; font-size:12px;" onclick="toggleNotifications()">Deaktiviert</button>
+              <button class="btn-secondary" type="button" id="btnTestNotification" style="padding:6px 12px; font-size:12px;" onclick="triggerTestNotification()">Test-Push</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:13px; font-weight:600; color:var(--text-1); margin-bottom:10px;">Wecker-Uhrzeiten konfigurieren</div>
+          <div class="form-grid" style="gap:10px;">
+            <div class="form-group">
+              <label class="form-label" for="alarmTime_morning" style="color:var(--morning)">☀️ Morgens</label>
+              <input class="form-input" type="time" id="alarmTime_morning" onchange="saveAlarmSettings()" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="alarmTime_noon" style="color:var(--noon)">🌤️ Mittags</label>
+              <input class="form-input" type="time" id="alarmTime_noon" onchange="saveAlarmSettings()" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="alarmTime_evening" style="color:var(--evening)">🌆 Abends</label>
+              <input class="form-input" type="time" id="alarmTime_evening" onchange="saveAlarmSettings()" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="alarmTime_night" style="color:var(--night)">🌙 Nachts</label>
+              <input class="form-input" type="time" id="alarmTime_night" onchange="saveAlarmSettings()" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="bottom-spacer"></div>
     </section>
 
@@ -619,49 +748,49 @@
         <div class="mood-grid">
           <div class="mood-row">
             <div class="mood-label">Stimmung</div>
-            <select class="mood-select" id="mood_stimmung" onchange="updateMoodBadge('stimmung'); saveMoodEntry(true)">
+            <select class="mood-select" id="mood_stimmung" onchange="updateMoodBadge('stimmung')">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_stimmung_badge">–</div>
           </div>
           <div class="mood-row">
             <div class="mood-label">Energie</div>
-            <select class="mood-select" id="mood_energie" onchange="updateMoodBadge('energie'); saveMoodEntry(true)">
+            <select class="mood-select" id="mood_energie" onchange="updateMoodBadge('energie')">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_energie_badge">–</div>
           </div>
           <div class="mood-row">
             <div class="mood-label">Antrieb</div>
-            <select class="mood-select" id="mood_antrieb" onchange="updateMoodBadge('antrieb'); saveMoodEntry(true)">
+            <select class="mood-select" id="mood_antrieb" onchange="updateMoodBadge('antrieb')">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_antrieb_badge">–</div>
           </div>
           <div class="mood-row">
             <div class="mood-label">Angst</div>
-            <select class="mood-select" id="mood_angst" onchange="updateMoodBadge('angst'); saveMoodEntry(true)">
+            <select class="mood-select" id="mood_angst" onchange="updateMoodBadge('angst')">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_angst_badge">–</div>
           </div>
           <div class="mood-row">
             <div class="mood-label">Reizbarkeit</div>
-            <select class="mood-select" id="mood_reizbarkeit" onchange="updateMoodBadge('reizbarkeit'); saveMoodEntry(true)">
+            <select class="mood-select" id="mood_reizbarkeit" onchange="updateMoodBadge('reizbarkeit')">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_reizbarkeit_badge">–</div>
           </div>
           <div class="mood-row">
             <div class="mood-label">Konzentration</div>
-            <select class="mood-select" id="mood_konzentration" onchange="updateMoodBadge('konzentration'); saveMoodEntry(true)">
+            <select class="mood-select" id="mood_konzentration" onchange="updateMoodBadge('konzentration')">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_konzentration_badge">–</div>
           </div>
           <div class="mood-row">
             <div class="mood-label">Hoffnungslosigkeit</div>
-            <select class="mood-select" id="mood_hoffnungslosigkeit" onchange="updateMoodBadge('hoffnungslosigkeit'); saveMoodEntry(true)">
+            <select class="mood-select" id="mood_hoffnungslosigkeit" onchange="updateMoodBadge('hoffnungslosigkeit')">
               <option value="">–</option>
             </select>
             <div class="mood-badge" id="mood_hoffnungslosigkeit_badge">–</div>
@@ -703,7 +832,7 @@
           </div>
         </div>
         <div class="input-with-voice">
-          <textarea class="notes-area" id="moodNotes" placeholder="z. B. Gutes Gespräch mit Freund, viel Grübeln am Abend..." onchange="saveMoodEntry(true)"></textarea>
+          <textarea class="notes-area" id="moodNotes" placeholder="z. B. Gutes Gespräch mit Freund, viel Grübeln am Abend..."></textarea>
           <button class="voice-btn" type="button" title="Spracheingabe" onclick="startVoiceInput('moodNotes', this)">🎤</button>
         </div>
       </div>
@@ -738,8 +867,20 @@
         <div id="moodTrendAnalysis"></div>
       </div>
 
+      <!-- Collapsed Info Card when surveys are up-to-date -->
+      <div class="card" id="surveysCollapsedCard" style="display:none; margin-top:20px; border-color: rgba(0,212,170,0.3)">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(0,212,170,0.15)">🧠</div>
+          <div style="flex: 1">
+            <div class="card-title">Depressions- &amp; Angst-Screening</div>
+            <div class="card-subtitle" id="surveysCollapsedNextDate">Fragebögen aktuell. Nächste Abfrage in ... Tagen.</div>
+          </div>
+          <button class="btn-secondary" type="button" id="btnToggleSurveys" onclick="toggleSurveysVisibility()">Anzeigen</button>
+        </div>
+      </div>
+
       <!-- PHQ-9 Fragebogen -->
-      <div class="card" style="margin-top:20px">
+      <div class="card" id="phq9SurveyCard" style="margin-top:20px">
         <div class="card-header">
           <div class="card-icon" style="background:rgba(167,139,250,0.15)">🧾</div>
           <div>
@@ -760,7 +901,7 @@
       </div>
 
       <!-- GAD-7 Fragebogen -->
-      <div class="card" style="margin-top:20px">
+      <div class="card" id="gad7SurveyCard" style="margin-top:20px">
         <div class="card-header">
           <div class="card-icon" style="background:rgba(59,158,255,0.15)">😰</div>
           <div>
@@ -987,6 +1128,72 @@
         </div>
       </div>
 
+      <!-- Therapie-Meilensteine (Ereignis-Marker) -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(167,139,250,0.15)">📍</div>
+          <div style="flex:1">
+            <div class="card-title">Therapie-Meilensteine (Ereignis-Marker)</div>
+            <div class="card-subtitle">Dosisänderungen oder neue Therapien eintragen (erscheinen im Diagramm)</div>
+          </div>
+        </div>
+        <div id="milestonesList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;"></div>
+        <div class="form-grid" style="gap:10px;">
+          <div class="form-group">
+            <label class="form-label" for="milestoneDate">Datum</label>
+            <input class="form-input" type="date" id="milestoneDate" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="milestoneDesc">Ereignis / Notiz</label>
+            <input class="form-input" id="milestoneDesc" placeholder="z. B. Pramipexol erhöht" />
+          </div>
+          <div class="form-group full">
+            <button class="btn-secondary" type="button" onclick="addMilestone()" style="width:100%">+ Meilenstein hinzufügen</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:rgba(245,158,11,0.15)">📅</div>
+          <div>
+            <div class="card-title">Berichtszeitraum</div>
+            <div class="card-subtitle">Welche Daten sollen im PDF-Report erscheinen?</div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div id="lastPrintInfo" style="font-size:12.5px;color:var(--text-2);background:var(--bg-2);padding:10px 14px;border-radius:6px;border:1px solid var(--border-color)">
+            Letzter PDF-Export: <span id="lastPrintDateSpan" style="font-weight:bold;color:var(--text-1)">Noch nie</span>
+          </div>
+          
+          <div class="radio-group" style="display:flex; flex-direction:column; gap:8px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; color:var(--text-1)">
+              <input type="radio" name="exportRange" value="all" checked onchange="toggleExportDateInputs()" style="width:16px;height:16px" />
+              <span>Kompletter Verlauf (alle Daten)</span>
+            </label>
+            <label id="labelLastPrintRange" style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; color:var(--text-1)">
+              <input type="radio" name="exportRange" value="sinceLast" onchange="toggleExportDateInputs()" id="radioSinceLast" style="width:16px;height:16px" />
+              <span>Seit letztem Export (<span id="sinceLastDateSpan">-</span>)</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:14px; color:var(--text-1)">
+              <input type="radio" name="exportRange" value="custom" onchange="toggleExportDateInputs()" style="width:16px;height:16px" />
+              <span>Benutzerdefinierter Zeitraum</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="form-grid" id="customExportDates" style="display:none; margin-top:12px; border-top:1px solid var(--border-color); padding-top:12px;">
+          <div class="form-group">
+            <label class="form-label" for="exportStartDate">Startdatum</label>
+            <input class="form-input" type="date" id="exportStartDate" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="exportEndDate">Enddatum</label>
+            <input class="form-input" type="date" id="exportEndDate" />
+          </div>
+        </div>
+      </div>
+
       <div class="section-header"><div class="section-title">Export</div></div>
       <div class="export-grid">
         <div class="export-card" onclick="previewPDF()">
@@ -1056,6 +1263,18 @@
         <label class="form-label" for="medPzn">PZN (optional)</label>
         <input class="form-input" id="medPzn" inputmode="numeric" placeholder="8-stellig" />
       </div>
+      <div class="form-group">
+        <label class="form-label" for="medStock">Aktueller Bestand (Stück)</label>
+        <input class="form-input" type="number" id="medStock" min="0" step="any" placeholder="z. B. 60 (optional)" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="medPackSize">Packungsgröße (Auffüllwert)</label>
+        <input class="form-input" type="number" id="medPackSize" min="0" step="any" placeholder="z. B. 100 (optional)" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="medThresholdDays">Warnschwelle (Tage)</label>
+        <input class="form-input" type="number" id="medThresholdDays" min="0" step="1" placeholder="Standard: 7" />
+      </div>
       <div class="form-group full">
         <label class="form-label">Einnahmeschema (Anzahl pro Tageszeit)</label>
         <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">Leer lassen = Bedarfsmedikation ohne feste Tageszeit</div>
@@ -1098,7 +1317,7 @@
     <iframe id="pdfPreviewFrame" class="pdf-preview-frame" title="PDF-Vorschau"></iframe>
     <div class="modal-actions">
       <button class="btn-secondary" type="button" onclick="closePdfPreview()">Schließen</button>
-      <button class="btn-primary" type="button" style="width:auto" onclick="downloadPreviewedPDF()">⬇️ Herunterladen</button>
+      <button class="btn-primary" type="button" id="btnDownloadOrShare" style="width:auto" onclick="downloadPreviewedPDF()">⬇️ Herunterladen</button>
     </div>
   </div>
 </div>

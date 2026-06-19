@@ -138,6 +138,8 @@ function initApp() {
   if (typeof initRlsTab === 'function') initRlsTab();
   if (typeof loadRlsModeSettings === 'function') loadRlsModeSettings();
   if (typeof refreshMedInteractionAlert === 'function') refreshMedInteractionAlert();
+  if (typeof loadAlarmSettings === 'function') loadAlarmSettings();
+  if (typeof startAlarmEngine === 'function') startAlarmEngine();
   initImportZone();
   if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
   applyInitialRoute();
@@ -174,6 +176,7 @@ function switchTab(name) {
   if (name === 'rls') refreshRlsTab();
   if (name === 'meds') renderMedList();
   if (name === 'analysis') renderAnalysisTab();
+  if (name === 'export' && typeof initExportTab === 'function') initExportTab();
 }
 
 function applyInitialRoute() {
@@ -214,8 +217,30 @@ function escHtml(str) {
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            if (typeof showToast === 'function') {
+              showToast('🔄 Update installiert. App wird neu geladen...');
+            }
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+          }
+        });
+      });
+    }).catch(() => {});
   }, { once: true });
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
 }
 
 window.addEventListener('hashchange', applyInitialRoute);
@@ -232,3 +257,125 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 registerServiceWorker();
+
+// ── Einnahme-Wecker Alarm Engine ────────────────
+let alarmIntervalId = null;
+
+function startAlarmEngine() {
+  if (alarmIntervalId) clearInterval(alarmIntervalId);
+  alarmIntervalId = setInterval(checkMedicationAlarms, 30000);
+  setTimeout(checkMedicationAlarms, 3000);
+}
+
+function checkPrescriptionReminders() {
+  if (typeof getMeds !== 'function') return;
+  const meds = getMeds();
+
+  meds.forEach(med => {
+    if (!med.active) return;
+    if (med.stock === undefined || med.stock === null || isNaN(med.stock)) return;
+
+    const dailyDose = (med.schedule?.morning || 0) + (med.schedule?.noon || 0) + (med.schedule?.evening || 0) + (med.schedule?.night || 0);
+    const threshold = med.thresholdDays !== undefined && !isNaN(med.thresholdDays) ? med.thresholdDays : 7;
+
+    let isLow = false;
+    if (dailyDose === 0) {
+      isLow = med.stock < 10;
+    } else {
+      const days = Math.floor(med.stock / dailyDose);
+      isLow = days < threshold;
+    }
+
+    if (isLow) {
+      const title = `💊 Rezept-Erinnerung`;
+      const body = `Dein Bestand für ${med.name} ist knapp. Bitte denke daran, ein neues Rezept zu bestellen!`;
+      triggerPushNotification(title, body);
+    }
+  });
+}
+
+function checkMedicationAlarms() {
+  if (typeof getSettings !== 'function' || typeof getMeds !== 'function') return;
+  const settings = getSettings();
+  if (settings.notificationsEnabled !== true) return;
+
+  const alarmTimes = settings.alarmTimes || {
+    morning: '08:00',
+    noon: '12:00',
+    evening: '18:00',
+    night: '22:00',
+  };
+
+  const now = new Date();
+  const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  
+  const lastTriggered = localStorage.getItem('lastTriggeredAlarmMinute');
+  const todayKey = todayStr();
+  const triggerKey = `${todayKey}_${currentHHMM}`;
+
+  // Täglich um 09:00 Uhr Rezept-Bestände prüfen und ggf. benachrichtigen
+  if (currentHHMM === '09:00') {
+    const lastPrescriptionDate = localStorage.getItem('lastTriggeredPrescriptionDate');
+    if (lastPrescriptionDate !== todayKey) {
+      localStorage.setItem('lastTriggeredPrescriptionDate', todayKey);
+      checkPrescriptionReminders();
+    }
+  }
+
+  if (lastTriggered === triggerKey) return;
+
+  const slots = [
+    { key: 'morning', label: 'morgens', time: alarmTimes.morning },
+    { key: 'noon', label: 'mittags', time: alarmTimes.noon },
+    { key: 'evening', label: 'abends', time: alarmTimes.evening },
+    { key: 'night', label: 'nachts', time: alarmTimes.night },
+  ];
+
+  const matchedSlot = slots.find(s => s.time === currentHHMM);
+  if (!matchedSlot) return;
+
+  const meds = getMeds();
+  const store = getStore();
+  const entry = store[todayKey] || {};
+  const taken = Array.isArray(entry.medsTaken) ? entry.medsTaken : [];
+
+  const pendingMeds = meds.filter(m => {
+    if (!m.active) return false;
+    const schedQty = m.schedule?.[matchedSlot.key] || 0;
+    if (schedQty <= 0) return false;
+
+    const slotId = `${m.id}_${matchedSlot.key}`;
+    const alreadyTaken = taken.includes(slotId) || taken.includes(m.id);
+    return !alreadyTaken;
+  });
+
+  if (pendingMeds.length === 0) return;
+
+  const medNames = pendingMeds.map(m => m.name).join(', ');
+  const title = `💊 Einnahme-Erinnerung (${matchedSlot.key === 'morning' ? 'Morgens' : matchedSlot.key === 'noon' ? 'Mittags' : matchedSlot.key === 'evening' ? 'Abends' : 'Nachts'})`;
+  const body = `Bitte nimm deine anstehenden Medikamente ein: ${medNames}.`;
+
+  localStorage.setItem('lastTriggeredAlarmMinute', triggerKey);
+  triggerPushNotification(title, body);
+}
+
+function triggerPushNotification(title, body) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'SHOW_NOTIFICATION',
+      title: title,
+      body: body,
+      tag: 'medication-reminder'
+    });
+  } else {
+    try {
+      new Notification(title, {
+        body: body,
+        icon: './icons/icon-192.png',
+        tag: 'medication-reminder'
+      });
+    } catch (e) {}
+  }
+}

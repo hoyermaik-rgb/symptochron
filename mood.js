@@ -115,7 +115,7 @@ function buildMoodSymptomGrid() {
   if (!container) return;
   container.innerHTML = MOOD_SYMPTOMS.map(s => `
     <label class="symptom-chip">
-      <input type="checkbox" data-symptom="${s.key}" onchange="toggleMoodSymptom(this); saveMoodEntry(true)">
+      <input type="checkbox" data-symptom="${s.key}" onchange="toggleMoodSymptom(this)">
       <span>${s.label}</span>
     </label>
   `).join('');
@@ -130,7 +130,7 @@ function buildMoodActivityTags() {
   const row = document.getElementById('moodActivityTags');
   if (!row) return;
   row.innerHTML = MOOD_ACTIVITIES.map(a => `
-    <button type="button" class="tag-btn" data-activity="${a.key}" onclick="toggleMoodActivity('${a.key}'); saveMoodEntry(true)">
+    <button type="button" class="tag-btn" data-activity="${a.key}" onclick="toggleMoodActivity('${a.key}')">
       ${a.label}
     </button>
   `).join('');
@@ -170,7 +170,7 @@ function loadMoodEntry() {
   if (notesEl) notesEl.value = entry.notes || '';
 }
 
-function saveMoodEntry(silent = false) {
+function saveMoodEntry() {
   const store = getMoodStore();
   const entry = store[currentMoodDate] || {};
 
@@ -220,9 +220,7 @@ function saveMoodEntry(silent = false) {
   // Also update welcome if exists
   if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
 
-  if (!silent) {
-    showToast('✅ Stimmungs-Eintrag gespeichert');
-  }
+  showToast('✅ Stimmungs-Eintrag gespeichert');
 
   // Optional: trigger correlation refresh if charts are visible
   if (document.getElementById('tab-charts')?.classList.contains('active')) {
@@ -588,6 +586,10 @@ function savePhq9() {
 
   showToast('✅ PHQ-9 gespeichert');
   renderPhq9History();
+
+  // Refresh survey visibility & welcome reminder
+  if (typeof refreshSurveysVisibility === 'function') refreshSurveysVisibility();
+  if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
 }
 
 function renderPhq9History() {
@@ -776,6 +778,10 @@ function saveGad7() {
 
   showToast('✅ GAD-7 gespeichert');
   renderGad7History();
+
+  // Refresh survey visibility & welcome reminder
+  if (typeof refreshSurveysVisibility === 'function') refreshSurveysVisibility();
+  if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
 }
 
 function renderGad7History() {
@@ -870,4 +876,110 @@ window.initMoodTab = function() {
       loadCrisisData();
     }
   }, 200);
+};
+
+// ── Survey Interval & Visibility Management ───────
+let surveysManualShow = false;
+
+function checkMoodSurveysDue() {
+  const phqStore = getPhq9Store();
+  const gadStore = getGad7Store();
+
+  const phqDates = Object.keys(phqStore).sort();
+  const gadDates = Object.keys(gadStore).sort();
+
+  const latestPhqDate = phqDates[phqDates.length - 1];
+  const latestGadDate = gadDates[gadDates.length - 1];
+
+  const now = new Date(todayStr()); // Normalisiert auf lokale Mitternacht des heutigen Tages
+
+  let daysSincePhq = 999;
+  if (latestPhqDate) {
+    const phqDateObj = new Date(latestPhqDate);
+    daysSincePhq = Math.round((now - phqDateObj) / (1000 * 60 * 60 * 24));
+  }
+
+  let daysSinceGad = 999;
+  if (latestGadDate) {
+    const gadDateObj = new Date(latestGadDate);
+    daysSinceGad = Math.round((now - gadDateObj) / (1000 * 60 * 60 * 24));
+  }
+
+  return {
+    phqDue: daysSincePhq >= 21,
+    gadDue: daysSinceGad >= 21,
+    daysSincePhq,
+    daysSinceGad,
+    latestPhqDate,
+    latestGadDate
+  };
+}
+
+function refreshSurveysVisibility() {
+  const status = checkMoodSurveysDue();
+  const collapsedCard = document.getElementById('surveysCollapsedCard');
+  const phqCard = document.getElementById('phq9SurveyCard');
+  const gadCard = document.getElementById('gad7SurveyCard');
+  const toggleBtn = document.getElementById('btnToggleSurveys');
+  const collapsedText = document.getElementById('surveysCollapsedNextDate');
+
+  if (!collapsedCard || !phqCard || !gadCard) return;
+
+  const due = status.phqDue || status.gadDue;
+
+  if (due) {
+    // Falls mind. ein Fragebogen fällig ist -> immer voll anzeigen
+    phqCard.style.display = 'block';
+    gadCard.style.display = 'block';
+    collapsedCard.style.display = 'none';
+    surveysManualShow = false; // Zurücksetzen des manuellen Overrides
+  } else {
+    // Beide sind aktuell (jeweils innerhalb der letzten 21 Tage ausgefüllt)
+    collapsedCard.style.display = 'block';
+    
+    // Berechne Tage bis zur nächsten Fälligkeit
+    const nextPhqDue = 21 - status.daysSincePhq;
+    const nextGadDue = 21 - status.daysSinceGad;
+    const daysUntilNext = Math.min(nextPhqDue, nextGadDue);
+    
+    if (collapsedText) {
+      collapsedText.textContent = `Fragebögen aktuell. Nächste Abfrage in ${daysUntilNext} ${daysUntilNext === 1 ? 'Tag' : 'Tagen'}.`;
+    }
+
+    if (surveysManualShow) {
+      phqCard.style.display = 'block';
+      gadCard.style.display = 'block';
+      if (toggleBtn) toggleBtn.textContent = 'Verbergen';
+    } else {
+      phqCard.style.display = 'none';
+      gadCard.style.display = 'none';
+      if (toggleBtn) toggleBtn.textContent = 'Anzeigen';
+    }
+  }
+}
+
+function toggleSurveysVisibility(forceShow) {
+  if (forceShow !== undefined) {
+    surveysManualShow = forceShow;
+  } else {
+    surveysManualShow = !surveysManualShow;
+  }
+  refreshSurveysVisibility();
+}
+
+// Exponieren für andere Skripte (wie welcome.js)
+window.checkMoodSurveysDue = checkMoodSurveysDue;
+window.refreshSurveysVisibility = refreshSurveysVisibility;
+window.toggleSurveysVisibility = toggleSurveysVisibility;
+
+// Monkey-patch für die Initialisierung der Umfrage-Sichtbarkeit
+const originalInitMoodTab4 = window.initMoodTab;
+window.initMoodTab = function() {
+  if (originalInitMoodTab4) originalInitMoodTab4();
+  
+  setTimeout(() => {
+    if (typeof refreshSurveysVisibility === 'function') {
+      refreshSurveysVisibility();
+    }
+  }, 250);
 };

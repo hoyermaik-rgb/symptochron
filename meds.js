@@ -55,6 +55,9 @@
       note: (raw?.note || '').trim(),
       schedule,
       time: (raw?.time || '').trim() || buildLegacyTimeString(schedule),
+      stock: raw?.stock !== undefined && raw?.stock !== null && raw?.stock !== '' ? parseFloat(raw.stock) : undefined,
+      packSize: raw?.packSize !== undefined && raw?.packSize !== null && raw?.packSize !== '' ? parseFloat(raw.packSize) : undefined,
+      thresholdDays: raw?.thresholdDays !== undefined && raw?.thresholdDays !== null && raw?.thresholdDays !== '' ? parseInt(raw.thresholdDays, 10) : 7,
       source: raw?.source || 'manual',
       active: raw?.active !== false,
       createdAt: raw?.createdAt || raw?.created || new Date().toISOString(),
@@ -65,6 +68,9 @@
     if (!normalized.time) delete normalized.time;
     if (!normalized.pzn) delete normalized.pzn;
     if (!normalized.form) delete normalized.form;
+    if (normalized.stock === undefined || isNaN(normalized.stock)) delete normalized.stock;
+    if (normalized.packSize === undefined || isNaN(normalized.packSize)) delete normalized.packSize;
+    if (isNaN(normalized.thresholdDays)) normalized.thresholdDays = 7;
     if (!normalized.dose) normalized.dose = '';
     return normalized;
   }
@@ -191,6 +197,9 @@
     document.getElementById('medNoon').value = med.schedule?.noon || '';
     document.getElementById('medEvening').value = med.schedule?.evening || '';
     document.getElementById('medNight').value = med.schedule?.night || '';
+    document.getElementById('medStock').value = med.stock !== undefined ? med.stock : '';
+    document.getElementById('medPackSize').value = med.packSize !== undefined ? med.packSize : '';
+    document.getElementById('medThresholdDays').value = med.thresholdDays !== undefined ? med.thresholdDays : '';
   }
 
   // Kompakte Chip-Darstellung: 1 Antippen = Einnahme bestätigt
@@ -243,16 +252,49 @@
       </div>`;
     }).filter(Boolean).join('');
 
-    const unscheduledChips = meds.map(m => {
+    const unscheduledHtml = meds.map(m => {
       const sched = emptySchedule(m.schedule);
       if (Object.values(sched).some(v => v > 0)) return '';
+      
+      const timeList = times[m.id] ? times[m.id].split(', ').filter(Boolean) : [];
       const checked = takenIds.includes(m.id);
-      return buildMedIntakeChip(m, m.id, checked, 'bei Bedarf', { flex: true, time: times[m.id] || '' });
+
+      const hiddenInputs = `
+        <input type="checkbox" data-med-intake="${m.id}" data-flex="1" data-taken-time="${escHtml(times[m.id] || '')}" ${checked ? 'checked' : ''} style="display:none;" />
+      `;
+
+      const timeChips = timeList.map(t => `
+        <span class="time-badge" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(0,212,170,0.15); color: var(--accent-2); padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;">
+          ${t}
+          <span onclick="event.stopPropagation(); removePrnIntake('${currentDate}', '${m.id}', '${t}')" style="cursor: pointer; font-weight: bold; margin-left: 2px; color: var(--accent-pain);">✕</span>
+        </span>
+      `).join('');
+
+      return `
+        <div class="med-prn-row" style="display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; width: 100%; box-sizing: border-box;">
+          <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div style="text-align: left;">
+              <span style="font-weight: 600; color: var(--text-1);">${escHtml(m.name)} (Bedarf)</span>
+              ${m.dose ? `<span style="font-size: 11px; color: var(--text-3); margin-left: 6px;">(${escHtml(m.dose)})</span>` : ''}
+            </div>
+            <button type="button" class="btn-primary" onclick="addPrnIntake('${currentDate}', '${m.id}')" style="padding: 4px 10px; font-size: 11px; background: var(--accent-1); border-radius: 8px; width: auto; margin: 0; display: inline-flex; align-items: center; gap: 4px;">
+              ⚡ Eintragen
+            </button>
+          </div>
+          ${hiddenInputs}
+          ${timeList.length > 0 ? `
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 6px; width: 100%;">
+              <span style="font-size: 11px; color: var(--text-3); align-self: center;">Einnahmen:</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 4px;">${timeChips}</div>
+            </div>
+          ` : '<div style="font-size: 11px; color: var(--text-3); font-style: italic; border-top: 1px dashed var(--border); padding-top: 6px; width: 100%; text-align: left;">Heute noch nicht eingenommen</div>'}
+        </div>
+      `;
     }).filter(Boolean).join('');
 
-    list.innerHTML = groupsHtml + (unscheduledChips ? `<div class="med-slot-row">
-      <div class="med-slot-label">📌 Bei Bedarf</div>
-      <div class="med-chip-row">${unscheduledChips}</div>
+    list.innerHTML = groupsHtml + (unscheduledHtml ? `<div class="med-slot-row" style="flex-direction: column; align-items: flex-start;">
+      <div class="med-slot-label" style="margin-bottom: 8px;">📌 Bei Bedarf</div>
+      <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">${unscheduledHtml}</div>
     </div>` : '');
 
     updateMedIntakeProgress();
@@ -341,6 +383,39 @@
     return taken.filter(id => id === medId || id.startsWith(`${medId}_`));
   }
 
+  function calculateRangeLabel(med) {
+    if (med.stock === undefined || med.stock === null || isNaN(med.stock)) return 'Bestand: —';
+    const dailyDose = (med.schedule?.morning || 0) + (med.schedule?.noon || 0) + (med.schedule?.evening || 0) + (med.schedule?.night || 0);
+    const threshold = med.thresholdDays !== undefined && !isNaN(med.thresholdDays) ? med.thresholdDays : 7;
+    
+    if (dailyDose === 0) {
+      const isLow = med.stock < 10;
+      if (isLow) {
+        return `<span class="med-stock-info warn">⚠️ ${med.stock} Stk.</span>`;
+      }
+      return `<span class="med-stock-info">${med.stock} Stk.</span>`;
+    }
+    
+    const days = Math.floor(med.stock / dailyDose);
+    if (days < threshold) {
+      return `<span class="med-stock-info warn">⚠️ ${days} Tage (${med.stock} Stk.)</span>`;
+    }
+    return `<span class="med-stock-info">${days} Tage (${med.stock} Stk.)</span>`;
+  }
+
+  function refillMedication(id) {
+    const meds = getMeds();
+    const med = meds.find(m => m.id === id);
+    if (!med) return;
+    const size = med.packSize || 100;
+    med.stock = size;
+    saveMeds(meds);
+    refreshMedicationUi();
+    if (typeof showToast === 'function') {
+      showToast(`📦 Bestand für ${med.name} auf ${size} Stück aufgefüllt!`);
+    }
+  }
+
   function refreshMedInteractionAlert() {
     const el = document.getElementById('medInteractionAlert');
     if (!el) return;
@@ -373,11 +448,12 @@
     const rows = meds.map(m => {
       const warn = medHasLocalWarning(m.name, warnings);
       const sched = emptySchedule(m.schedule);
+      const stockHtml = m.stock !== undefined ? ` · 📦 ${calculateRangeLabel(m)}` : '';
       return `<tr class="med-plan-row ${warn ? 'warn' : ''}">
         <td>
           <div class="med-plan-name-cell">
             <div class="med-plan-name-main">${warn ? '🔴 ' : ''}${escHtml(m.name)}</div>
-            <div class="med-plan-name-sub">${m.pzn ? `PZN ${escHtml(m.pzn)}` : '—'}</div>
+            <div class="med-plan-name-sub">${m.pzn ? `PZN ${escHtml(m.pzn)}` : '—'}${stockHtml}</div>
           </div>
         </td>
         <td>${escHtml(m.dose || '–')}</td>
@@ -389,6 +465,7 @@
         <td>${escHtml(m.note || '–')}</td>
         <td>
           <div class="med-plan-actions">
+            ${m.packSize !== undefined ? `<button class="btn-secondary" type="button" style="padding:6px 10px" title="Bestand auffüllen" onclick="refillMedication('${escHtml(m.id)}')">🔄</button>` : ''}
             <button class="btn-secondary" type="button" style="padding:6px 10px" onclick="openMedModal('${escHtml(m.id)}')">✎</button>
             <button class="btn-danger" type="button" style="padding:6px 10px" onclick="deleteMedicationById('${escHtml(m.id)}')">✕</button>
           </div>
@@ -421,7 +498,7 @@
     const modal = document.getElementById('medModal');
     if (!modal) return;
 
-    ['medName', 'medPzn', 'medDose', 'medMorning', 'medNoon', 'medEvening', 'medNight', 'medForm', 'medNote'].forEach(id => {
+    ['medName', 'medPzn', 'medDose', 'medMorning', 'medNoon', 'medEvening', 'medNight', 'medForm', 'medNote', 'medStock', 'medPackSize', 'medThresholdDays'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -446,7 +523,7 @@
     if (modal) delete modal.dataset.editingId;
     setMedicationModalMode('create');
     document.getElementById('medModal')?.classList.remove('open');
-    ['medName', 'medPzn', 'medDose', 'medMorning', 'medNoon', 'medEvening', 'medNight', 'medForm', 'medNote'].forEach(id => {
+    ['medName', 'medPzn', 'medDose', 'medMorning', 'medNoon', 'medEvening', 'medNight', 'medForm', 'medNote', 'medStock', 'medPackSize', 'medThresholdDays'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -458,6 +535,9 @@
     const dose = document.getElementById('medDose')?.value.trim() || '';
     const form = document.getElementById('medForm')?.value.trim() || '';
     const note = document.getElementById('medNote')?.value.trim() || '';
+    const stockVal = document.getElementById('medStock')?.value;
+    const packSizeVal = document.getElementById('medPackSize')?.value;
+    const thresholdDaysVal = document.getElementById('medThresholdDays')?.value;
 
     const schedule = {
       morning: normalizeQty(document.getElementById('medMorning')?.value),
@@ -477,6 +557,9 @@
       note: note || undefined,
       schedule,
       time: buildLegacyTimeString(schedule),
+      stock: stockVal !== '' ? parseFloat(stockVal) : undefined,
+      packSize: packSizeVal !== '' ? parseFloat(packSizeVal) : undefined,
+      thresholdDays: thresholdDaysVal !== '' ? parseInt(thresholdDaysVal, 10) : 7,
       source: 'manual',
       active: true,
     };
@@ -679,6 +762,187 @@
     btn.textContent = '🔍 Wechselwirkungen prüfen';
   }
 
+  function saveAlarmSettings() {
+    if (typeof getSettings !== 'function' || typeof saveSettings !== 'function') return;
+    const settings = getSettings();
+    settings.alarmTimes = {
+      morning: document.getElementById('alarmTime_morning')?.value || '08:00',
+      noon: document.getElementById('alarmTime_noon')?.value || '12:00',
+      evening: document.getElementById('alarmTime_evening')?.value || '18:00',
+      night: document.getElementById('alarmTime_night')?.value || '22:00',
+    };
+    saveSettings(settings);
+    if (typeof showToast === 'function') {
+      showToast('⏰ Wecker-Zeiten gespeichert');
+    }
+  }
+
+  function loadAlarmSettings() {
+    if (typeof getSettings !== 'function') return;
+    const settings = getSettings();
+    const times = settings.alarmTimes || {
+      morning: '08:00',
+      noon: '12:00',
+      evening: '18:00',
+      night: '22:00',
+    };
+    
+    if (document.getElementById('alarmTime_morning')) document.getElementById('alarmTime_morning').value = times.morning;
+    if (document.getElementById('alarmTime_noon')) document.getElementById('alarmTime_noon').value = times.noon;
+    if (document.getElementById('alarmTime_evening')) document.getElementById('alarmTime_evening').value = times.evening;
+    if (document.getElementById('alarmTime_night')) document.getElementById('alarmTime_night').value = times.night;
+
+    const enabled = settings.notificationsEnabled === true;
+    updateNotificationButtonUI(enabled);
+  }
+
+  function updateNotificationButtonUI(enabled) {
+    const btn = document.getElementById('btnToggleNotifications');
+    if (!btn) return;
+    if (enabled) {
+      btn.textContent = 'Aktiviert';
+      btn.className = 'btn-primary';
+      btn.style.width = 'auto';
+    } else {
+      btn.textContent = 'Deaktiviert';
+      btn.className = 'btn-secondary';
+      btn.style.width = 'auto';
+    }
+  }
+
+  function toggleNotifications() {
+    if (typeof getSettings !== 'function' || typeof saveSettings !== 'function') return;
+    const settings = getSettings();
+    const currentlyEnabled = settings.notificationsEnabled === true;
+
+    if (!currentlyEnabled) {
+      if (!('Notification' in window)) {
+        showToast('⚠️ Benachrichtigungen werden nicht unterstützt');
+        return;
+      }
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          settings.notificationsEnabled = true;
+          saveSettings(settings);
+          updateNotificationButtonUI(true);
+          showToast('✅ Benachrichtigungen aktiviert!');
+        } else {
+          settings.notificationsEnabled = false;
+          saveSettings(settings);
+          updateNotificationButtonUI(false);
+          showToast('❌ Berechtigung verweigert');
+        }
+      });
+    } else {
+      settings.notificationsEnabled = false;
+      saveSettings(settings);
+      updateNotificationButtonUI(false);
+      showToast('Benachrichtigungen deaktiviert');
+    }
+  }
+
+  function triggerTestNotification() {
+    if (!('Notification' in window)) {
+      showToast('⚠️ Benachrichtigungen werden nicht unterstützt');
+      return;
+    }
+    if (Notification.permission !== 'granted') {
+      showToast('⚠️ Bitte aktiviere zuerst die Erinnerungen');
+      return;
+    }
+    showToast('⏳ Test-Mitteilung in 3 Sekunden...');
+    setTimeout(() => {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'SHOW_NOTIFICATION',
+          title: '💊 SymptoChron Test-Erinnerung',
+          body: 'Das ist eine Test-Mitteilung für deine Medikamente. Funktioniert super!'
+        });
+      } else {
+        new Notification('💊 SymptoChron Test-Erinnerung', {
+          body: 'Das ist eine Test-Mitteilung für deine Medikamente. Funktioniert super!',
+          icon: './icons/icon-192.png'
+        });
+      }
+    }, 3000);
+  }
+
+  function adjustInventoryForIntakeChange(date, newTakenIds, newTakenTimes) {
+    if (typeof getStore !== 'function') return;
+    const store = getStore();
+    const entry = store[date] || {};
+    const oldTakenIds = Array.isArray(entry.medsTaken) ? entry.medsTaken : [];
+    const oldTakenTimes = entry.medsTakenTimes || {};
+    const resolvedNewTimes = newTakenTimes || oldTakenTimes;
+
+    const meds = getMeds();
+    let changed = false;
+
+    meds.forEach(med => {
+      if (med.stock === undefined || med.stock === null) return;
+
+      const dailyDose = (med.schedule?.morning || 0) + (med.schedule?.noon || 0) + (med.schedule?.evening || 0) + (med.schedule?.night || 0);
+
+      if (dailyDose === 0) {
+        // Bedarfsmedikation: count times
+        const oldStr = oldTakenTimes[med.id] || '';
+        const newStr = resolvedNewTimes[med.id] || '';
+        const oldCount = oldStr ? oldStr.split(', ').filter(Boolean).length : 0;
+        const newCount = newStr ? newStr.split(', ').filter(Boolean).length : 0;
+        const diff = newCount - oldCount;
+
+        if (diff !== 0) {
+          med.stock = parseFloat((med.stock - diff).toFixed(2));
+          if (med.stock < 0) med.stock = 0;
+          changed = true;
+        }
+      } else {
+        // Scheduled
+        const slots = ['morning', 'noon', 'evening', 'night'];
+        slots.forEach(slot => {
+          const slotId = `${med.id}_${slot}`;
+          const wasTaken = oldTakenIds.includes(slotId);
+          const isTaken = newTakenIds.includes(slotId);
+          if (wasTaken !== isTaken) {
+            const amount = normalizeQty(med.schedule?.[slot]) || 1;
+            const diff = isTaken ? amount : -amount;
+            med.stock = parseFloat((med.stock - diff).toFixed(2));
+            if (med.stock < 0) med.stock = 0;
+            changed = true;
+          }
+        });
+      }
+    });
+
+    if (changed) {
+      saveMeds(meds);
+      refreshMedicationUi();
+      
+      // Warnungen für knappen Bestand ausgeben
+      meds.forEach(med => {
+        if (med.stock === undefined || med.stock === null) return;
+        const dailyDose = (med.schedule?.morning || 0) + (med.schedule?.noon || 0) + (med.schedule?.evening || 0) + (med.schedule?.night || 0);
+        const threshold = med.thresholdDays !== undefined && !isNaN(med.thresholdDays) ? med.thresholdDays : 7;
+        
+        let isLow = false;
+        if (dailyDose === 0) {
+          isLow = med.stock < 10;
+        } else {
+          const days = Math.floor(med.stock / dailyDose);
+          isLow = days < threshold;
+        }
+
+        if (isLow) {
+          setTimeout(() => {
+            if (typeof showToast === 'function') {
+              showToast(`⚠️ Bestand knapp: ${med.name} reicht nur noch für ${dailyDose === 0 ? med.stock + ' Einnahmen' : Math.floor(med.stock / dailyDose) + ' Tage'}!`);
+            }
+          }, 1000);
+        }
+      });
+    }
+  }
+
   const api = {
     getMeds,
     saveMeds,
@@ -711,6 +975,13 @@
     importParsedMedications,
     resolveRxcui,
     checkDrugInteractions,
+    refillMedication,
+    saveAlarmSettings,
+    loadAlarmSettings,
+    toggleNotifications,
+    triggerTestNotification,
+    adjustInventoryForIntakeChange,
+    currentTimeHHMM,
   };
 
   window.SymptoChronMeds = api;

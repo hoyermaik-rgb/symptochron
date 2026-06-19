@@ -45,14 +45,14 @@ function buildTimeBlocks() {
       </div>
       <div class="score-row">
         <div class="score-label">Schmerz<span>Intensität 0–10</span></div>
-        <select class="score-select pain" id="${t.key}_pain" onchange="updateScoreBadge('${t.key}','pain'); saveEntry(true)">
+        <select class="score-select pain" id="${t.key}_pain" onchange="updateScoreBadge('${t.key}','pain')">
           ${scoreOptions()}
         </select>
         <div class="score-badge pain" id="${t.key}_pain_badge">–</div>
       </div>
       <div class="score-row">
         <div class="score-label">RLS<span>Intensität 0–10</span></div>
-        <select class="score-select rls" id="${t.key}_rls" onchange="updateScoreBadge('${t.key}','rls'); saveEntry(true)">
+        <select class="score-select rls" id="${t.key}_rls" onchange="updateScoreBadge('${t.key}','rls')">
           ${scoreOptions()}
         </select>
         <div class="score-badge rls" id="${t.key}_rls_badge">–</div>
@@ -170,12 +170,35 @@ function loadCurrentEntry() {
     btn.classList.toggle('on', !!factors[btn.dataset.factor]);
   });
 
+  // Reset body parts
+  document.querySelectorAll('.body-part').forEach(part => {
+    const cls = part.getAttribute('class') || '';
+    part.setAttribute('class', cls.replace(/\bactive\b/g, '').replace(/\s+/g, ' ').trim());
+  });
+  // Set active body parts
+  const painAreas = entry.painAreas || [];
+  painAreas.forEach(area => {
+    const el = document.querySelector(`.body-part[data-part="${area}"]`);
+    if (el) {
+      const cls = el.getAttribute('class') || '';
+      if (!cls.split(' ').includes('active')) {
+        el.setAttribute('class', (cls + ' active').trim());
+      }
+    }
+  });
+
+  // Load weather & pressure
+  const weatherEl = document.getElementById('diaryWeather');
+  const pressureEl = document.getElementById('diaryPressure');
+  if (weatherEl) weatherEl.value = entry.weather || '';
+  if (pressureEl) pressureEl.value = entry.pressure || '';
+
   if (typeof renderMedIntakeForDiary === 'function') {
     renderMedIntakeForDiary(entry.medsTaken || [], entry.medsTakenTimes || {});
   }
 }
 
-function saveEntry(silent = false) {
+function saveEntry() {
   const store = getStore();
   const entry = store[currentDate] || {};
 
@@ -206,22 +229,45 @@ function saveEntry(silent = false) {
   if (Object.keys(factors).length) entry.factors = factors;
   else delete entry.factors;
 
+  // Save body parts
+  const activeParts = Array.from(document.querySelectorAll('.body-part'))
+    .filter(el => {
+      const cls = el.getAttribute('class') || '';
+      return cls.split(' ').includes('active');
+    })
+    .map(el => el.getAttribute('data-part'));
+  if (activeParts.length) entry.painAreas = activeParts;
+  else delete entry.painAreas;
+
+  // Save weather & pressure
+  const weatherVal = document.getElementById('diaryWeather')?.value;
+  const pressureVal = document.getElementById('diaryPressure')?.value;
+  if (weatherVal) entry.weather = weatherVal;
+  else delete entry.weather;
+  if (pressureVal) entry.pressure = pressureVal;
+  else delete entry.pressure;
+
   const taken = typeof collectMedicationIntakeFromDom === 'function'
     ? collectMedicationIntakeFromDom()
     : [];
-  if (taken.length) entry.medsTaken = taken;
-  else delete entry.medsTaken;
-
   const takenTimes = typeof collectMedicationIntakeTimesFromDom === 'function'
     ? collectMedicationIntakeTimesFromDom()
     : {};
+
+  if (typeof adjustInventoryForIntakeChange === 'function') {
+    adjustInventoryForIntakeChange(currentDate, taken, takenTimes);
+  }
+
+  if (taken.length) entry.medsTaken = taken;
+  else delete entry.medsTaken;
+
   if (Object.keys(takenTimes).length) entry.medsTakenTimes = takenTimes;
   else delete entry.medsTakenTimes;
 
   // Only save if there is actual data (not just an empty object)
   const hasData = TIMES.some(t => entry[`${t.key}_pain`] !== undefined || entry[`${t.key}_rls`] !== undefined)
     || entry.notes || entry.sleepHours !== undefined || entry.sleepQuality !== undefined
-    || entry.factors || entry.medsTaken;
+    || entry.factors || entry.medsTaken || entry.painAreas || entry.weather || entry.pressure;
 
   if (hasData) {
     entry.updated = new Date().toISOString();
@@ -234,17 +280,15 @@ function saveEntry(silent = false) {
   if (store[currentDate] && typeof markDataEnteredToday === 'function') markDataEnteredToday();
   buildWeekStrip();
   if (typeof renderWelcomeScreen === 'function') renderWelcomeScreen();
-  
-  if (!silent) {
-    showToast('✅ Eintrag gespeichert');
-    // Pulse animation on save button
-    var saveBtn = document.getElementById('saveEntryBtn');
-    if (saveBtn) {
-      saveBtn.classList.remove('pulse-ok');
-      void saveBtn.offsetWidth;
-      saveBtn.classList.add('pulse-ok');
-      setTimeout(function() { saveBtn.classList.remove('pulse-ok'); }, 700);
-    }
+  showToast('✅ Eintrag gespeichert');
+
+  // Pulse animation on save button
+  var saveBtn = document.getElementById('saveEntryBtn');
+  if (saveBtn) {
+    saveBtn.classList.remove('pulse-ok');
+    void saveBtn.offsetWidth;
+    saveBtn.classList.add('pulse-ok');
+    setTimeout(function() { saveBtn.classList.remove('pulse-ok'); }, 700);
   }
 }
 
@@ -273,7 +317,27 @@ function ensureDiaryReady(options) {
     buildInfluenceTags();
   }
 
+  // Setup body map listeners
+  setupBodyMapListeners();
+
   refreshDiary();
+}
+
+function setupBodyMapListeners() {
+  const parts = document.querySelectorAll('.body-part');
+  parts.forEach(part => {
+    if (part.getAttribute('data-has-listener') !== 'true') {
+      part.addEventListener('click', () => {
+        const cls = part.getAttribute('class') || '';
+        if (cls.split(' ').includes('active')) {
+          part.setAttribute('class', cls.replace(/\bactive\b/g, '').replace(/\s+/g, ' ').trim());
+        } else {
+          part.setAttribute('class', (cls + ' active').trim());
+        }
+      });
+      part.setAttribute('data-has-listener', 'true');
+    }
+  });
 }
 
 // ── Influence tags & med intake ─────────────────
@@ -281,7 +345,7 @@ function buildInfluenceTags() {
   const row = document.getElementById('influenceTags');
   if (!row) return;
   row.innerHTML = INFLUENCE_TAGS.map(t =>
-    `<button type="button" class="tag-btn" data-factor="${t.key}" onclick="toggleFactor('${t.key}'); saveEntry(true)">${t.label}</button>`
+    `<button type="button" class="tag-btn" data-factor="${t.key}" onclick="toggleFactor('${t.key}')">${t.label}</button>`
   ).join('');
 }
 

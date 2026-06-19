@@ -267,34 +267,20 @@ function loadRlsDailyForm() {
   const store = getRlsDaily();
   const e = store[currentRlsDate] || {};
   document.getElementById('rlsDateLabel').textContent = formatDateLabel(currentRlsDate);
-  
-  const symEl = document.getElementById('rlsSymptom');
-  if (symEl) {
-    symEl.value = e.symptom !== undefined ? e.symptom : '';
-    symEl.onchange = () => saveRlsDaily(true);
-  }
-  
-  const sqEl = document.getElementById('rlsSleepQuality');
-  if (sqEl) {
-    sqEl.value = e.sleepQuality !== undefined ? e.sleepQuality : '';
-    sqEl.onchange = () => saveRlsDaily(true);
-  }
-  
-  const fields = ['beginDuration', 'triggers', 'medication', 'relief', 'sleepOnset', 'sleepWakeups', 'sleepRlsWake'];
-  const ids = ['rlsBeginDuration', 'rlsTriggers', 'rlsMedication', 'rlsRelief', 'rlsSleepOnset', 'rlsSleepWakeups', 'rlsSleepRlsWake'];
-  fields.forEach((key, i) => {
-    const el = document.getElementById(ids[i]);
-    if (el) {
-      el.value = e[key] || '';
-      el.onchange = () => saveRlsDaily(true);
-    }
-  });
-  
+  document.getElementById('rlsSymptom').value = e.symptom !== undefined ? e.symptom : '';
+  document.getElementById('rlsSleepQuality').value = e.sleepQuality !== undefined ? e.sleepQuality : '';
+  document.getElementById('rlsBeginDuration').value = e.beginDuration || '';
+  document.getElementById('rlsTriggers').value = e.triggers || '';
+  document.getElementById('rlsMedication').value = e.medication || '';
+  document.getElementById('rlsRelief').value = e.relief || '';
+  const onset = document.getElementById('rlsSleepOnset');
+  const wake = document.getElementById('rlsSleepWakeups');
+  const rlsW = document.getElementById('rlsSleepRlsWake');
   const aug = document.getElementById('rlsAugmentation');
-  if (aug) {
-    aug.checked = !!e.augmentation;
-    aug.onchange = () => saveRlsDaily(true);
-  }
+  if (onset) onset.value = e.sleepOnset || '';
+  if (wake) wake.value = e.sleepWakeups || '';
+  if (rlsW) rlsW.value = e.sleepRlsWake || '';
+  if (aug) aug.checked = !!e.augmentation;
 
   const period = getActivePreVisitPeriod();
   const sub = document.getElementById('rlsDailySubtitle');
@@ -307,7 +293,7 @@ function loadRlsDailyForm() {
   }
 }
 
-function saveRlsDaily(silent = false) {
+function saveRlsDaily() {
   const store = getRlsDaily();
   const entry = {};
   const sym = document.getElementById('rlsSymptom').value;
@@ -327,16 +313,14 @@ function saveRlsDaily(silent = false) {
   const hasContent = entry.symptom !== undefined || entry.sleepQuality !== undefined ||
     fields.some(k => entry[k]);
   if (!hasContent) {
-    if (!silent) showToast('⚠️ Bitte mindestens ein Feld ausfüllen');
+    showToast('⚠️ Bitte mindestens ein Feld ausfüllen');
     return;
   }
 
   store[currentRlsDate] = { ...(store[currentRlsDate] || {}), ...entry };
   saveRlsDailyStore(store);
   renderRlsDailyTable();
-  if (!silent) {
-    showToast('✅ RLS-Dokumentation gespeichert');
-  }
+  showToast('✅ RLS-Dokumentation gespeichert');
 }
 
 function renderRlsDailyTable() {

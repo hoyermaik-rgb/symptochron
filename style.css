@@ -1280,12 +1280,11 @@ canvas#mainChart { width: 100% !important; max-height: 280px; }
 /* Floating save button – always accessible */
 .floating-save-wrap {
   position: fixed;
-  bottom: 0;
+  bottom: calc(62px + env(safe-area-inset-bottom));
   left: 0;
   right: 0;
-  padding: 14px 20px 24px;
-  background: linear-gradient(to top, var(--bg-deep) 40%, rgba(8,17,31,0.92) 75%, transparent);
-  z-index: 90;
+  padding: 10px 20px;
+  z-index: 95;
   display: flex;
   justify-content: center;
   pointer-events: none;
@@ -1976,9 +1975,7 @@ canvas#mainChart { width: 100% !important; max-height: 280px; }
 :root[data-theme="light"] .welcome-hero {
   background: linear-gradient(135deg, rgba(29,114,211,0.08), rgba(0,148,120,0.06)), var(--bg-card);
 }
-:root[data-theme="light"] .floating-save-wrap {
-  background: linear-gradient(to top, var(--bg-deep) 40%, rgba(238,243,250,0.92) 75%, transparent);
-}
+
 
 /* ══════════════════════════════════════════════════
    STREAK-BADGE
@@ -2139,3 +2136,42 @@ canvas#mainChart { width: 100% !important; max-height: 280px; }
   color: var(--accent-pain);
   margin-bottom: 8px;
 }
+
+/* ── SCHMERZ-KÖRPERKARTE (BODY MAP) ── */
+.body-svg {
+  background: rgba(15, 30, 53, 0.4);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+  max-width: 100%;
+}
+.body-part {
+  fill: #1e293b;
+  stroke: #475569;
+  stroke-width: 0.8px;
+  cursor: pointer;
+  transition: fill 0.2s ease, stroke 0.2s ease;
+}
+.body-part:hover {
+  fill: #334155;
+}
+.body-part.active {
+  fill: #ff4d4d;
+  stroke: #b91c1c;
+}
+
+/* ── MEDICATION STOCK & REMINDERS ── */
+.med-stock-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font);
+  font-size: calc(11px * var(--font-scale, 1));
+  color: var(--text-2);
+  margin-left: 6px;
+}
+.med-stock-info.warn {
+  color: var(--accent-pain);
+  font-weight: 600;
+}
+

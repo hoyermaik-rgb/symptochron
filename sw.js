@@ -1,5 +1,5 @@
 // ── Service Worker – SymptoChron ─────────────────────
-const CACHE_NAME = 'symptochron-modern-v5';
+const CACHE_NAME = 'symptochron-modern-v16';
 const APP_SHELL = [
   './',
   './index.html',
@@ -83,4 +83,17 @@ self.addEventListener('notificationclick', event => {
       return undefined;
     })
   );
+});
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    event.waitUntil(
+      self.registration.showNotification(event.data.title || 'SymptoChron', {
+        body: event.data.body || '',
+        icon: './icons/icon-192.png',
+        badge: './icons/icon-192.png',
+        tag: event.data.tag || 'symptochron-reminder'
+      })
+    );
+  }
 });
