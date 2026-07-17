@@ -318,6 +318,13 @@ export default function WelcomeTab({
         </div>
       )}
 
+      {/* Stock Disclaimer */}
+      {(criticalStockMeds.length > 0 || warningStockMeds.length > 0) && (
+        <div className="text-[10px] text-slate-500 italic px-2 -mt-3">
+          *Hinweis: Der errechnete Vorrat ist eine Schätzung auf Basis deines Einnahmeplans. Bitte gleiche ihn regelmäßig mit deinem echten Bestand ab, um Abweichungen zu vermeiden.
+        </div>
+      )}
+
       {/* Hero Welcome banner */}
       <div className="relative p-6 sm:p-8 overflow-hidden rounded-3xl bg-linear-to-br from-blue-600/10 via-violet-600/5 to-slate-900/40 border border-blue-500/20">
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

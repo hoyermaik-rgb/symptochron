@@ -23,6 +23,7 @@ export interface Medication {
   id: string;
   name: string;
   pzn?: string;
+  wirkstoff?: string;
   dose: string;
   form?: string;
   note?: string;
@@ -38,6 +39,8 @@ export interface Medication {
   thresholdDays: number;
   active: boolean;
   source?: string;
+  stand?: string;
+  verified?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

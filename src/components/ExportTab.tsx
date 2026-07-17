@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { 
-  FileText, 
-  DownloadCloud, 
-  UploadCloud, 
-  Trash2, 
-  Info, 
-  Check, 
+import {
+  FileText,
+  DownloadCloud,
+  UploadCloud,
+  Trash2,
+  Info,
+  Check,
   ArrowRight,
   HelpCircle,
   FileCheck
 } from 'lucide-react';
 import { DiaryEntry, Medication, MoodEntry, RLSSurvey, SOSData } from '../types';
 import PdfExport from './PdfExport';
+import { generateFhirBundle } from '../fhirMapper';
+import { validateBackupSchema } from '../utils';
 
 interface ExportTabProps {
   diary: Record<string, DiaryEntry>;
@@ -19,6 +21,7 @@ interface ExportTabProps {
   mood: Record<string, MoodEntry>;
   rlsSurveys: Record<string, RLSSurvey>;
   sosData: SOSData;
+  isDemoMode?: boolean;
   onRestoreBackup: (backup: any) => void;
   onClearAllData: () => void;
   showToast: (msg: string) => void;
@@ -30,6 +33,7 @@ export default function ExportTab({
   mood,
   rlsSurveys,
   sosData,
+  isDemoMode = false,
   onRestoreBackup,
   onClearAllData,
   showToast,
@@ -38,6 +42,23 @@ export default function ExportTab({
   const [scannedFileName, setScannedFileName] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [aiConsent, setAiConsent] = useState(() => localStorage.getItem('symptochron_ai_consent') === 'true');
+
+  const handleToggleAiConsent = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const consented = e.target.checked;
+    setAiConsent(consented);
+    if (consented) {
+      localStorage.setItem('symptochron_ai_consent', 'true');
+      showToast('✅ KI-Einwilligung erteilt. Du kannst nun AI-Trends und Daily Insights nutzen.');
+    } else {
+      localStorage.removeItem('symptochron_ai_consent');
+      localStorage.removeItem('symptochron_ai_analysis');
+      localStorage.removeItem('symptochron_ai_analysis_date');
+      localStorage.removeItem('symptochron_insight_data');
+      localStorage.removeItem('symptochron_insight_date');
+      showToast('🔒 KI-Einwilligung widerrufen. Alle lokalen KI-Caches wurden gelöscht.');
+    }
+  };
 
   const filterByDateRange = <T extends Record<string, any>>(data: T): T => {
     if (!startDate && !endDate) return data;
@@ -55,28 +76,21 @@ export default function ExportTab({
   const handleSendMailTemplate = () => {
     const subject = encodeURIComponent('SymptoChron Verlaufsprotokoll & Medikationsplan');
     let body = `Sehr geehrtes Praxisteam,\n\nanbei sende ich Ihnen meinen aktuellen Medikationsplan sowie mein Symptomtagebuch aus der SymptoChron-App.\n\n`;
-    body += `Patienten-Dossier:\n`;
-    body += `- Name: ${sosData.patientName || 'Nicht angegeben'}\n`;
-    body += `- Geburtsdatum: ${sosData.dob || 'Nicht angegeben'}\n\n`;
-    body += `Aktuelle Medikation:\n`;
-    if (meds.length > 0) {
-      meds.forEach(m => {
-        const schedStr = `${m.schedule.morning}-${m.schedule.noon}-${m.schedule.evening}-${m.schedule.night}`;
-        const dailyCount = Object.keys(m.schedule).reduce((acc, k) => acc + (m.schedule[k] || 0), 0);
-        const intakeLabel = dailyCount === 0 ? 'Bei Bedarf' : schedStr;
-        body += `- ${m.name} (${m.dose || '—'} ${m.form || ''}): ${intakeLabel}\n`;
-      });
-    } else {
-      body += `Keine aktiven Medikamente eingetragen.\n`;
-    }
-    body += `\nMit freundlichen Grüßen,\n${sosData.patientName || 'Patient/in'}`;
-    
+    body += `HINWEIS: Aus Datenschutzgründen (DSGVO) sind in dieser E-Mail keine sensiblen Patientendaten im Klartext enthalten.\n`;
+    body += `Bitte beachten Sie die an diese E-Mail angehängten Dokumente (z.B. passwortgeschützte Zip-Datei oder PDF-Report).\n\n`;
+    body += `Mit freundlichen Grüßen,\n${sosData.patientName || 'Patient/in'}`;
+
     window.location.href = `mailto:?subject=${subject}&body=${encodeURIComponent(body)}`;
-    showToast('✉️ E-Mail-Entwurf im Mailprogramm geöffnet!');
+    showToast('✉️ E-Mail-Entwurf geöffnet. Bitte hänge deine Backup-Zip oder das PDF manuell an!');
   };
 
   // Local helper to export raw JSON backup
   const handleExportJson = () => {
+    if (isDemoMode) {
+      showToast('⚠️ Demo-Daten können nicht als echtes Backup exportiert werden.');
+      return;
+    }
+
     const backupObj = {
       version: '1.0.0',
       timestamp: new Date().toISOString(),
@@ -98,8 +112,42 @@ export default function ExportTab({
     showToast('💾 JSON-Daten-Backup heruntergeladen!');
   };
 
+  // Convert to HL7 FHIR Format
+  const handleExportFhir = () => {
+    if (isDemoMode) {
+      showToast('⚠️ Demo-Daten können nicht als FHIR-Export ausgegeben werden.');
+      return;
+    }
+
+    // Note: To be fully strict, we should load bloodPressure from props,
+    // but we can omit it or pass empty array for now since it's not in props of ExportTab yet.
+    const bundle = generateFhirBundle(
+      filterByDateRange(diary),
+      meds,
+      filterByDateRange(mood),
+      filterByDateRange(rlsSurveys),
+      sosData,
+      [] // bp placeholder
+    );
+
+    const strObj = JSON.stringify(bundle, null, 2);
+    const blob = new Blob([strObj], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `SymptoChron_FHIR_Bundle_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast('⚕️ HL7 FHIR Bundle heruntergeladen!');
+  };
+
   // Convert diary & meds data to clean comma-separated clinical matrices
   const handleExportCsv = () => {
+    if (isDemoMode) {
+      showToast('⚠️ Demo-Daten können nicht als echte CSV exportiert werden.');
+      return;
+    }
+
     let dates = Object.keys(diary).sort();
     if (startDate) dates = dates.filter(d => d >= startDate);
     if (endDate) dates = dates.filter(d => d <= endDate);
@@ -151,15 +199,22 @@ export default function ExportTab({
     reader.onload = (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
-        if (parsed.diary && parsed.meds) {
-          onRestoreBackup(parsed);
-          showToast('✅ Daten erfolgreich wiederhergestellt!');
+
+        // AP-08: Run strict schema and type validation
+        const val = validateBackupSchema(parsed);
+        if (!val.valid) {
+          showToast(`❌ Import fehlgeschlagen: ${val.errors[0]}`);
+          console.error("Backup schema validation errors:", val.errors);
           setScannedFileName('');
-        } else {
-          showToast('❌ Ungültige Backupdatei. Datensätze fehlen.');
+          return;
         }
-      } catch {
+
+        onRestoreBackup(parsed);
+        showToast('✅ Daten erfolgreich wiederhergestellt!');
+        setScannedFileName('');
+      } catch (err) {
         showToast('❌ Parser-Fehler. Keine gültige SymptoChron JSON.');
+        setScannedFileName('');
       }
     };
     reader.readAsText(file);
@@ -167,6 +222,12 @@ export default function ExportTab({
 
   return (
     <div className="space-y-6">
+      {isDemoMode && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-5 text-sm text-amber-200 leading-relaxed">
+          Demo-Modus aktiv: Exporte sind gesperrt, damit keine Beispieldaten in echte Arztberichte, Backups oder FHIR-Dateien gelangen. Du kannst unten ein echtes Backup importieren oder alle lokalen Daten löschen und neu starten.
+        </div>
+      )}
+
       {/* Clinician PDF report layout block */}
       <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 space-y-4">
         <div className="flex gap-3">
@@ -189,6 +250,7 @@ export default function ExportTab({
           mood={mood}
           rlsSurveys={rlsSurveys}
           sosData={sosData}
+          isDemoMode={isDemoMode}
         />
       </div>
 
@@ -207,7 +269,7 @@ export default function ExportTab({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 Pt-1">
           <div className="space-y-3.5 bg-slate-950/40 p-5 border border-slate-850 rounded-2xl">
             <span className="text-xs font-bold text-slate-200 block">Exportieren:</span>
-            
+
             {/* Datumsfilter */}
             <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400 mb-2">
               <div className="space-y-1">
@@ -252,6 +314,13 @@ export default function ExportTab({
               >
                 ✉️ E-Mail an Arztpraxis vorbereiten
               </button>
+              <button
+                type="button"
+                onClick={handleExportFhir}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/40 text-violet-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                ⚕️ HL7 FHIR Export (ePA Standard)
+              </button>
             </div>
           </div>
 
@@ -271,6 +340,39 @@ export default function ExportTab({
               </span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Privacy & AI Consent Section */}
+      <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 space-y-4">
+        <div className="flex gap-3">
+          <div className="p-2.5 bg-blue-600/10 border border-blue-500/25 rounded-2xl">
+            <Info className="h-5 w-5 text-blue-400" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-100 uppercase tracking-widest">Datenschutz & KI-Dienste</h4>
+            <p className="text-[10px] text-slate-500 mt-0.5">Verwalte deine Einwilligung für optionale Auswertungen</p>
+          </div>
+        </div>
+
+        <p className="text-xs text-slate-400 leading-relaxed font-sans pl-1">
+          Die App nutzt zur Trendanalyse und Generierung täglicher Gesundheitstipps die externe Google Gemini API. Dabei werden alle Notizen und Texte lokal anonymisiert (AI Privacy Guard), sodass keine Klarnamen oder Kontaktdaten an Dritte übermittelt werden. Die Nutzung ist vollkommen freiwillig und erfordert dein Einverständnis.
+        </p>
+
+        <div className="p-4 bg-slate-950/40 border border-slate-850 rounded-2xl flex items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <span className="text-xs font-bold text-slate-200 block">KI-gestützte Funktionen aktivieren</span>
+            <span className="text-[10px] text-slate-500 block">Erlaubt den optionalen Datenabgleich mit der Gemini API (Anonymisiert)</span>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={aiConsent}
+              onChange={handleToggleAiConsent}
+              className="sr-only peer"
+            />
+            <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-450 after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+          </label>
         </div>
       </div>
 

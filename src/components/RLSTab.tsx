@@ -245,7 +245,7 @@ export default function RLSTab({
                     <button
                       type="button"
                       onClick={() => onDeleteAppointment(appt.id)}
-                      className="p-1.5 text-slate-500 hover:text-rose-450 hover:bg-rose-500/10 rounded-xl transition-all"
+                      className="p-1.5 text-slate-400 hover:text-rose-450 hover:bg-rose-500/10 rounded-xl transition-all"
                     >
                       <Trash className="h-4 w-4" />
                     </button>
@@ -296,7 +296,7 @@ export default function RLSTab({
                           className={`py-2 text-[10px] font-bold rounded-lg border transition-all active:scale-95 ${
                             isActive 
                               ? 'bg-violet-600/15 border-violet-500 text-violet-400 shadow-md shadow-violet-500/5' 
-                              : 'bg-slate-950/40 border-slate-850 text-slate-500 hover:text-slate-300'
+                              : 'bg-slate-950/40 border-slate-850 text-slate-400 hover:text-slate-300'
                           }`}
                         >
                           {val}

@@ -18,11 +18,14 @@ export default function DailyHealthInsight({ diary }: DailyHealthInsightProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [insight, setInsight] = useState<InsightData | null>(null);
+  const [consent, setConsent] = useState(() => localStorage.getItem('symptochron_ai_consent') === 'true');
 
   const current = todayStr();
 
   // Load from cache on mount or date change
   useEffect(() => {
+    if (!consent) return; // Do not fetch or read if consent is missing
+
     const cachedDate = localStorage.getItem('symptochron_insight_date');
     const cachedData = localStorage.getItem('symptochron_insight_data');
 
@@ -36,7 +39,48 @@ export default function DailyHealthInsight({ diary }: DailyHealthInsightProps) {
       // Auto fetch if not cached for today
       fetchDailyInsight();
     }
-  }, [current]);
+  }, [current, consent]);
+
+  if (!consent) {
+    return (
+      <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 space-y-4">
+        <div className="flex gap-3">
+          <div className="p-2.5 bg-blue-600/10 border border-blue-500/25 rounded-2xl">
+            <Sparkles className="h-5 w-5 text-blue-400 animate-pulse" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-100 uppercase tracking-widest">Tages-Tipp aktivieren</h4>
+            <p className="text-[10px] text-slate-500 mt-0.5">Opt-in für smarte Symptom-Insights</p>
+          </div>
+        </div>
+
+        <div className="text-xs text-slate-400 space-y-2.5 leading-relaxed font-sans pl-1">
+          <p>
+            Um dir tägliche RLS-Gesundheitstipps anzubieten, nutzt diese App optional die <strong>Google Gemini API</strong> auf unserem Server.
+          </p>
+          <p className="text-[11px] bg-slate-950/60 p-3 border border-slate-850 rounded-xl text-slate-350 flex gap-2">
+            🔒 <strong>Datenschutz-Garantie:</strong> Bevor Daten übertragen werden, filtert unser lokaler Datenschutzfilter (AI Privacy Guard) sämtliche personenbezogene Angaben wie Namen, E-Mails, Telefonnummern, Adressen und Geburtsdaten vollständig aus. Es werden ausschließlich anonyme Symptomdaten übertragen.
+          </p>
+          <p>
+            Du kannst diese Einwilligung jederzeit in den <strong>Einstellungen (Export & Reset)</strong> widerrufen. Dabei werden alle lokalen KI-Analysen gelöscht.
+          </p>
+        </div>
+
+        <div className="pt-2 flex gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.setItem('symptochron_ai_consent', 'true');
+              setConsent(true);
+            }}
+            className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all active:scale-[0.98] cursor-pointer text-center"
+          >
+            Einwilligen & Aktivieren
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const fetchDailyInsight = async () => {
     setLoading(true);

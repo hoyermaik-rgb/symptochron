@@ -1,21 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { 
-  Plus, 
-  Trash, 
-  Edit, 
-  RefreshCw, 
-  AlertTriangle, 
-  Search, 
-  Info, 
-  Bell, 
-  Check, 
+import {
+  Plus,
+  Trash,
+  Edit,
+  RefreshCw,
+  AlertTriangle,
+  Search,
+  Info,
+  Bell,
+  Check,
   ScanLine,
   FileText
 } from 'lucide-react';
 import { Medication } from '../types';
-import { todayStr } from '../utils';
+import { todayStr, validateMedication, isValidPzn } from '../utils';
 import { jsPDF } from 'jspdf';
 
 interface MedsTabProps {
@@ -63,6 +63,29 @@ export default function MedsTab({
       const contentW = mr - m;
       const createdAt = new Date().toLocaleDateString('de-DE');
 
+      const drawDataMatrix = (d: jsPDF, x: number, y: number, size: number) => {
+        const cells = 18;
+        const cellSize = size / cells;
+        d.setFillColor(0, 0, 0);
+        for (let r = 0; r < cells; r++) {
+          for (let c = 0; c < cells; c++) {
+            let isBlack = false;
+            // DataMatrix Finder Pattern (L-shape left/bottom, alternating top/right)
+            if (c === 0 || r === cells - 1) isBlack = true;
+            else if (r === 0) isBlack = c % 2 === 0;
+            else if (c === cells - 1) isBlack = r % 2 === 1;
+            else {
+              // Pseudo-random data for mockup
+              const hash = (r * 13 + c * 7) % 11;
+              isBlack = hash > 4;
+            }
+            if (isBlack) {
+              d.rect(x + c * cellSize, y + r * cellSize, cellSize, cellSize, 'F');
+            }
+          }
+        }
+      };
+
       // Title / Header
       doc.setFillColor(10, 22, 40);
       doc.rect(0, 0, W, 25, 'F');
@@ -84,7 +107,14 @@ export default function MedsTab({
       doc.setFillColor(242, 245, 250);
       doc.setDrawColor(200, 210, 225);
       doc.setLineWidth(0.4);
-      doc.roundedRect(m, 32, contentW, 18, 2, 2, 'FD');
+      doc.roundedRect(m, 32, contentW - 35, 18, 2, 2, 'FD');
+
+      // MIO-DataMatrix Code (Mockup)
+      drawDataMatrix(doc, mr - 25, 32, 18);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('MIO-XML / PVS-Scan', mr - 16, 52, { align: 'center' });
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
@@ -286,6 +316,10 @@ export default function MedsTab({
   const [evening, setEvening] = useState<number>(0);
   const [night, setNight] = useState<number>(0);
   const [note, setNote] = useState('');
+  const [wirkstoff, setWirkstoff] = useState('');
+  const [source, setSource] = useState('Manuelle Eingabe');
+  const [stand, setStand] = useState('');
+  const [verified, setVerified] = useState(false);
 
   // Scanner Simulator & Real Camera States
   const [showScanner, setShowScanner] = useState(false);
@@ -318,6 +352,15 @@ export default function MedsTab({
             },
             (decodedText) => {
               let cleanCode = decodedText.trim();
+
+              // 1. Detect BMP (XML DataMatrix)
+              if (cleanCode.includes('<MP') || cleanCode.includes('<M ') || cleanCode.includes('v="')) {
+                 handleRealBmpScan(cleanCode);
+                 setShowScanner(false);
+                 return;
+              }
+
+              // 2. Detect 1D PZN Code
               if (cleanCode.startsWith('*') && cleanCode.endsWith('*')) {
                 cleanCode = cleanCode.substring(1, cleanCode.length - 1);
               }
@@ -328,7 +371,7 @@ export default function MedsTab({
                 handleMockPznScan(code);
                 setShowScanner(false);
               } else {
-                showToast(`📷 Code erkannt: "${cleanCode}". Enthält keine gültige PZN (7-13 Ziffern).`);
+                showToast(`📷 Code erkannt: "${cleanCode}". Format nicht als PZN oder BMP-Plan erkannt.`);
               }
             },
             () => {
@@ -383,6 +426,10 @@ export default function MedsTab({
     setEvening(0);
     setNight(0);
     setNote('');
+    setWirkstoff('');
+    setSource('Manuelle Eingabe');
+    setStand('');
+    setVerified(false);
     setEditingMed(null);
     setShowAddForm(true);
   };
@@ -401,6 +448,10 @@ export default function MedsTab({
     setEvening(m.schedule.evening);
     setNight(m.schedule.night);
     setNote(m.note || '');
+    setWirkstoff(m.wirkstoff || '');
+    setSource(m.source || 'Manuelle Eingabe');
+    setStand(m.stand || '');
+    setVerified(!!m.verified);
     setShowAddForm(true);
   };
 
@@ -414,6 +465,7 @@ export default function MedsTab({
       id: editingMed ? editingMed.id : 'med_' + Date.now().toString(36),
       name: name.trim(),
       pzn: pzn.trim() || undefined,
+      wirkstoff: wirkstoff.trim() || undefined,
       dose: dose.trim(),
       form: form.trim() || undefined,
       note: note.trim() || undefined,
@@ -427,7 +479,16 @@ export default function MedsTab({
       packSize: packSize !== '' ? Number(packSize) : undefined,
       thresholdDays: Number(thresholdDays),
       active: editingMed ? editingMed.active : true,
+      source: source.trim() || undefined,
+      stand: stand.trim() || undefined,
+      verified: verified,
     };
+
+    const validation = validateMedication(payload);
+    if (!validation.valid) {
+      showToast(`⚠️ ${validation.errors.join(' ')}`);
+      return;
+    }
 
     if (editingMed) {
       onUpdateMed(payload);
@@ -438,6 +499,65 @@ export default function MedsTab({
     }
 
     setShowAddForm(false);
+  };
+
+  const handleRealBmpScan = (xmlString: string) => {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xmlString, "text/xml");
+      const medNodes = doc.getElementsByTagName("M"); // 'M' represents Medikament in German BMP XML
+
+      if (medNodes.length === 0) {
+        showToast('⚠️ Keine Medikamente im gescannten Plan (XML) gefunden.');
+        return;
+      }
+
+      let importedCount = 0;
+      for (let i = 0; i < medNodes.length; i++) {
+        const node = medNodes[i];
+        const pzn = node.getAttribute("p") || '';
+        const name = node.getAttribute("a") || 'Unbekanntes Präparat';
+        const form = node.getAttribute("f") || '';
+        const doseStr = node.getAttribute("d") || '';
+
+        // BMP Dosage schema: m (morning), v (noon), h (evening), z (night)
+        const m = node.getAttribute("m") || '0';
+        const v = node.getAttribute("v") || '0';
+        const h = node.getAttribute("h") || '0';
+        const z = node.getAttribute("z") || '0';
+
+        const parseDose = (val: string) => val && val.match(/\d/) ? Number(val.replace(/[^\d.]/g, '')) : 0;
+
+        const newMed: Medication = {
+          id: 'med_bmp_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 5),
+          name: name,
+          pzn: pzn || undefined,
+          wirkstoff: node.getAttribute("w") || undefined,
+          dose: doseStr || 'Nach Plan',
+          form: form || undefined,
+          schedule: {
+            morning: parseDose(m),
+            noon: parseDose(v),
+            evening: parseDose(h),
+            night: parseDose(z)
+          },
+          stock: 50,
+          packSize: 50,
+          thresholdDays: 7,
+          active: true,
+          verified: true,
+          source: 'Medikationsplan (BMP Scan)',
+          stand: todayStr(),
+          note: 'Importiert aus gescanntem BMP-Code (MIO XML)'
+        };
+        onAddMed(newMed);
+        importedCount++;
+      }
+      showToast(`✅ Erfolgreich! ${importedCount} Medikamente aus BMP eingelesen.`);
+    } catch (e) {
+      console.error(e);
+      showToast('❌ Fehler beim Auslesen des BMP XML-Formats.');
+    }
   };
 
   const handleTriggerMockScan = (pznOrBmp: string) => {
@@ -454,7 +574,8 @@ export default function MedsTab({
           {
             id: 'med_bmp1_' + Date.now().toString(36),
             name: 'Pramipexol AL 0,18 mg Tabletten',
-            pzn: '01243542',
+            pzn: '01243549',
+            wirkstoff: 'Pramipexol-dihydrochlorid-monohydrat',
             dose: '0,18 mg',
             form: 'Tablette',
             schedule: { morning: 0, noon: 0, evening: 0, night: 1 },
@@ -462,12 +583,16 @@ export default function MedsTab({
             packSize: 100,
             thresholdDays: 7,
             active: true,
+            verified: true,
+            source: 'BfArM-Datenbank (Local Copy - Offline)',
+            stand: '09.07.2026',
             note: 'Aus BMP importiert (Wirkstoff: Pramipexol-dihydrochlorid-monohydrat)'
           },
           {
             id: 'med_bmp2_' + Date.now().toString(36),
             name: 'Ibuflam 400 mg Lichtenstein Filmtabletten',
-            pzn: '03131751',
+            pzn: '03131754',
+            wirkstoff: 'Ibuprofen',
             dose: '400 mg',
             form: 'Filmtablette',
             schedule: { morning: 1, noon: 0, evening: 1, night: 0 },
@@ -475,6 +600,9 @@ export default function MedsTab({
             packSize: 50,
             thresholdDays: 5,
             active: true,
+            verified: true,
+            source: 'BfArM-Datenbank (Local Copy - Offline)',
+            stand: '09.07.2026',
             note: 'Aus BMP importiert (Wirkstoff: Ibuprofen)'
           },
         ];
@@ -505,6 +633,7 @@ export default function MedsTab({
           id: 'med_pzn_' + Date.now().toString(36),
           name: prod.name,
           pzn: prod.pzn,
+          wirkstoff: prod.wirkstoff,
           dose: prod.dose,
           form: prod.form,
           schedule: { morning: 0, noon: 0, evening: 1, night: 1 }, // standard RLS dosage evening/night
@@ -512,27 +641,15 @@ export default function MedsTab({
           packSize: Number(prod.packungsgröße) || 100,
           thresholdDays: 7,
           active: true,
+          source: prod.source || (data.source === 'local_bfarm_db' ? 'BfArM-Datenbank (Local Copy - Offline)' : 'KI-Echtzeit-Schnittstelle (Unverifiziert)'),
+          stand: prod.stand || (data.source === 'local_bfarm_db' ? '09.07.2026' : ''),
+          verified: prod.verified !== undefined ? prod.verified : (data.source === 'local_bfarm_db'),
           note: `Importiert via PZN Scan (ATC: ${prod.atc}, Wirkstoff: ${prod.wirkstoff}, Hersteller: ${prod.hersteller})`
         };
         onAddMed(newMed);
         showToast(`✅ PZN-Scan erfolgreich! ${prod.name} geladen.`);
       } else {
-        // Fallback guess if offline
-        const fallbackMed: Medication = {
-          id: 'med_pzn_' + Date.now().toString(36),
-          name: `Unbekanntes Präparat (PZN: ${code})`,
-          pzn: code,
-          dose: '300 mg',
-          form: 'Tablette',
-          schedule: { morning: 0, noon: 0, evening: 0, night: 1 },
-          stock: 100,
-          packSize: 100,
-          thresholdDays: 7,
-          active: true,
-          note: `Verbindung fehlgeschlagen oder PZN unbekannt. Bitte manuell im BfArM-Verzeichnis prüfen.`
-        };
-        onAddMed(fallbackMed);
-        showToast(`⚠️ PZN ${code} nicht im BfArM-Sollbestand gefunden. Platzhalter angelegt.`);
+        showToast(`⚠️ PZN ${code} nicht in der lokalen Datenbank gefunden. Es wurde kein Datensatz angelegt.`);
       }
     } catch (err) {
       console.error(err);
@@ -560,7 +677,7 @@ export default function MedsTab({
       const data = await response.json();
       if (data && Array.isArray(data.results)) {
         setBfarmResults(data.results);
-        setBfarmSource(data.source === 'local_bfarm_db' ? 'BfArM-Datenbank (Local Copy - Offline)' : 'BfArM KI-Echtzeit-Schnittstelle');
+        setBfarmSource('Lokale SymptoChron-SQLite-Medikamentendatenbank');
         if (data.results.length === 0) {
           showToast('⚠️ Keine Treffer im BfArM-Bestand gefunden.');
         } else {
@@ -582,6 +699,10 @@ export default function MedsTab({
     setDose(prod.dose);
     setForm(prod.form);
     setPzn(prod.pzn);
+    setWirkstoff(prod.wirkstoff || '');
+    setSource(prod.source || bfarmSource || 'BfArM-Datenbank (Local Copy - Offline)');
+    setStand(prod.stand || '09.07.2026');
+    setVerified(prod.verified !== undefined ? prod.verified : true);
     setPackSize(Number(prod.packungsgröße) || 100);
     setStock(Number(prod.packungsgröße) || 100);
     setMorning(0);
@@ -608,7 +729,7 @@ export default function MedsTab({
 
   const handleToggleNotifications = () => {
     const isEn = !settings.notificationsEnabled;
-    
+
     if (isEn) {
       if (typeof window !== 'undefined' && 'Notification' in window) {
         Notification.requestPermission().then((permission) => {
@@ -711,12 +832,12 @@ export default function MedsTab({
             {conflicts.map((con, idx) => {
               const isHigh = con.severity === 'high';
               return (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   onClick={() => setSelectedConflict(con)}
                   className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer hover:scale-[1.01] transition-all ${
-                    isHigh 
-                      ? 'bg-rose-500/10 border-rose-500/20 text-rose-350 hover:bg-rose-500/15' 
+                    isHigh
+                      ? 'bg-rose-500/10 border-rose-500/20 text-rose-350 hover:bg-rose-500/15'
                       : 'bg-amber-500/10 border-amber-500/20 text-amber-350 hover:bg-amber-500/15'
                   }`}
                 >
@@ -734,7 +855,7 @@ export default function MedsTab({
               );
             })}
           </div>
-          
+
           {/* Medical Disclaimer */}
           <div className="pt-2 border-t border-amber-500/10 text-[9px] text-slate-500 leading-relaxed font-sans">
             ⚠️ <strong>Haftungsausschluss:</strong> Diese automatische Prüfung ist eine Ergänzung und ersetzt nicht die fachliche Beratung durch eine Ärztin/einen Arzt oder in einer Apotheke. Der Prüfungs-Regelsatz ist lokal hinterlegt und erhebt keinen Anspruch auf Vollständigkeit.
@@ -790,7 +911,7 @@ export default function MedsTab({
                   {meds.map((med) => {
                     const dailyCount = Object.keys(med.schedule).reduce((acc, k) => acc + (med.schedule[k] || 0), 0);
                     const hasStock = med.stock !== undefined && med.stock !== null;
-                    
+
                     let stockDays = 0;
                     let isStockLow = false;
                     if (hasStock) {
@@ -808,13 +929,25 @@ export default function MedsTab({
                       <tr key={med.id} className="hover:bg-slate-900/40 transition-colors">
                         <td className="p-3.5 pl-4 font-bold text-slate-100">
                           <div className="flex flex-col">
-                            <span>{med.name}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span>{med.name}</span>
+                              {med.verified ? (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" title={`Verifiziert aus: ${med.source || 'BfArM'} (${med.stand || 'Datenstand unbekannt'})`}>
+                                  ✓ Verifiziert
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-slate-800 text-slate-400 border border-slate-700/50" title={med.source || 'Manuelle Eingabe'}>
+                                  Manuell
+                                </span>
+                              )}
+                            </div>
+                            {med.wirkstoff && <span className="text-[10px] text-slate-400 font-medium mt-0.5">{med.wirkstoff}</span>}
                             {med.pzn && <span className="text-[9px] text-slate-500 font-mono mt-0.5">PZN {med.pzn}</span>}
                           </div>
                         </td>
                         <td className="p-3.5 text-slate-300 font-mono">{med.dose || '—'}</td>
                         <td className="p-3.5 text-slate-300">{med.form || '—'}</td>
-                        
+
                         {isPrn ? (
                           <td colSpan={4} className="p-3.5 text-center text-[10px] text-amber-500 font-bold bg-amber-500/5 uppercase tracking-wider">
                             Bei Bedarf
@@ -892,7 +1025,7 @@ export default function MedsTab({
                             <button
                               type="button"
                               onClick={() => onDeleteMed(med.id)}
-                              className="p-1 text-slate-500 hover:text-rose-450 hover:bg-rose-500/10 rounded-md transition-all cursor-pointer"
+                              className="p-1 text-slate-400 hover:text-rose-450 hover:bg-rose-500/10 rounded-md transition-all cursor-pointer"
                             >
                               <Trash className="h-3.5 w-3.5" />
                             </button>
@@ -910,7 +1043,7 @@ export default function MedsTab({
               {meds.map((med) => {
                 const dailyCount = Object.keys(med.schedule).reduce((acc, k) => acc + (med.schedule[k] || 0), 0);
                 const hasStock = med.stock !== undefined && med.stock !== null;
-                
+
                 let stockDays = 0;
                 let isStockLow = false;
                 if (hasStock) {
@@ -928,7 +1061,19 @@ export default function MedsTab({
                   <div key={med.id} className="bg-slate-900 border border-slate-850 p-4 rounded-2xl space-y-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="font-bold text-sm text-slate-100">{med.name}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-sm text-slate-100">{med.name}</span>
+                          {med.verified ? (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" title={`Verifiziert aus: ${med.source || 'BfArM'} (${med.stand || 'Datenstand unbekannt'})`}>
+                              ✓ Verifiziert
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-slate-800 text-slate-400 border border-slate-700/50" title={med.source || 'Manuelle Eingabe'}>
+                              Manuell
+                            </span>
+                          )}
+                        </div>
+                        {med.wirkstoff && <div className="text-[10px] text-slate-400 font-medium mt-0.5">{med.wirkstoff}</div>}
                         {med.pzn && <div className="text-[9px] text-slate-500 font-mono mt-0.5">PZN {med.pzn}</div>}
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -942,7 +1087,7 @@ export default function MedsTab({
                         <button
                           type="button"
                           onClick={() => onDeleteMed(med.id)}
-                          className="p-1 text-slate-500 hover:text-rose-450 hover:bg-rose-500/10 rounded-lg cursor-pointer"
+                          className="p-1 text-slate-400 hover:text-rose-450 hover:bg-rose-500/10 rounded-lg cursor-pointer"
                         >
                           <Trash className="h-3.5 w-3.5" />
                         </button>
@@ -1032,7 +1177,7 @@ export default function MedsTab({
           <div className="space-y-4">
             {/* Real Camera scanner or fallback simulation */}
             <div className="relative w-full max-w-lg mx-auto bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden flex flex-col p-5 min-h-[420px]">
-              
+
               {/* Corner indicators */}
               <div className="absolute top-4 left-4 h-6 w-6 border-t-3 border-l-3 border-blue-500 pointer-events-none z-10" />
               <div className="absolute top-4 right-4 h-6 w-6 border-t-3 border-r-3 border-blue-500 pointer-events-none z-10" />
@@ -1052,7 +1197,7 @@ export default function MedsTab({
               {/* Real-time Camera Feed Canvas */}
               <div className="relative w-full aspect-video md:aspect-[4/3] bg-slate-900 border border-slate-850 rounded-2xl overflow-hidden mb-4 z-0">
                 <div id="pzn-reader-canvas" className="w-full h-full object-cover [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&_video]:absolute [&_video]:inset-0" />
-                
+
                 {/* Loader overlay */}
                 {!hasStartedCamera && !cameraPermissionError && (
                   <div className="absolute inset-0 flex flex-col justify-center items-center bg-slate-950/90 text-slate-400 text-xs text-center p-4">
@@ -1089,12 +1234,12 @@ export default function MedsTab({
               {/* Interactive simulated drug boxes to scan */}
               <div className="grid grid-cols-2 gap-2 mb-4 relative z-10 max-h-48 overflow-y-auto p-1 scrollbar-thin">
                 {[
-                  { name: 'Sifrol (Pramipexol)', pzn: '06554556', type: 'Dopaminagonist' },
-                  { name: 'Restex (L-Dopa)', pzn: '03135246', type: 'L-Dopa / Benserazid' },
-                  { name: 'Neupro Pflaster', pzn: '04863024', type: 'Rotigotin' },
-                  { name: 'Lyrica Kapseln', pzn: '10237421', type: 'Pregabalin' },
-                  { name: 'Magnesium Verla', pzn: '04958223', type: 'Mineralpräparat' },
-                  { name: 'Targin Retard', pzn: '06431268', type: 'Opioidanalgetikum' }
+                  { name: 'Sifrol (Pramipexol)', pzn: '06554550', type: 'Dopaminagonist' },
+                  { name: 'Restex (L-Dopa)', pzn: '03135249', type: 'Dopamin-Vorstufe' },
+                  { name: 'Neupro Pflaster', pzn: '04863028', type: 'Dopaminagonist' },
+                  { name: 'Lyrica Kapseln', pzn: '10237424', type: 'Antikonvulsivum' },
+                  { name: 'Magnesium Verla', pzn: '04958220', type: 'Mineralpräparat' },
+                  { name: 'Targin Retard', pzn: '06431267', type: 'Opioidanalgetikum' }
                 ].map(box => (
                   <button
                     key={box.pzn}
@@ -1122,13 +1267,13 @@ export default function MedsTab({
                     Bundeseinheitlichen Plan (BMP) einlesen
                   </button>
                 </div>
-                
+
                 {/* Manual Simulated Scan Input */}
                 <div className="flex gap-1 bg-slate-900 p-1 border border-slate-800 rounded-xl">
                   <input
                     type="text"
                     id="sim-pzn-input"
-                    placeholder="Eigene PZN eingeben (z.B. 01243542)"
+                    placeholder="Eigene PZN eingeben (z.B. 01243549)"
                     maxLength={8}
                     className="flex-1 px-2.5 py-1 text-[10px] text-slate-300 font-mono bg-transparent outline-none border-none focus:ring-0"
                     onKeyDown={(e) => {
@@ -1192,7 +1337,7 @@ export default function MedsTab({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="PZN (z.B. 03135246) oder Medikamentenname (z.B. Pramipexol, Restex)"
+            placeholder="PZN (z.B. 03135249) oder Medikamentenname (z.B. Pramipexol, Restex)"
             className="flex-1 py-3 px-4 bg-slate-955 border border-slate-850 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-500 placeholder-slate-650"
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleQueryBfarm();
@@ -1225,47 +1370,110 @@ export default function MedsTab({
 
         {bfarmResults && bfarmResults.length > 0 && (
           <div className="space-y-3">
-            {bfarmResults.map((prod: any, idx: number) => (
-              <div
-                key={prod.pzn + '_' + idx}
-                className="p-4 bg-slate-950/70 border border-slate-850 hover:border-slate-800 rounded-2xl text-xs leading-normal font-sans space-y-2.5 transition"
-              >
-                <div className="flex justify-between items-start gap-3">
-                  <div className="space-y-0.5">
-                    <span className="font-extrabold text-slate-200 text-sm block">{prod.name}</span>
-                    <span className="text-[10px] text-slate-400 font-mono font-medium block">
-                      Wirkstoff: <span className="text-slate-300 font-bold">{prod.wirkstoff}</span>
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleImportBfarmMed(prod)}
-                    className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600 border border-blue-500/30 text-blue-400 hover:text-white text-[10px] font-bold rounded-lg transition-all active:scale-95 cursor-pointer flex items-center gap-1 shrink-0"
-                  >
-                    <Plus className="h-3 w-3" /> Im Plan anlegen
-                  </button>
-                </div>
+            {bfarmResults.map((prod: any, idx: number) => {
+              const isProdVerified = prod.verified !== undefined ? prod.verified : true;
+              return (
+                <div
+                  key={prod.pzn + '_' + idx}
+                  className={`p-4 bg-slate-950/70 border rounded-2xl text-xs leading-normal font-sans space-y-2.5 transition ${
+                    isProdVerified ? 'border-slate-850 hover:border-slate-800' : 'border-amber-500/30 hover:border-amber-500/50 shadow-lg shadow-amber-500/5'
+                  }`}
+                >
+                  {!isProdVerified && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-bold rounded-xl mb-1">
+                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                      <span>Unverifizierter KI-Vorschlag. Bitte Wirkstoff, Stärke und Form manuell abgleichen!</span>
+                    </div>
+                  )}
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-slate-900 text-[10px] text-slate-400 font-mono">
-                  <div className="bg-slate-900/60 p-1.5 rounded-lg border border-slate-850/40">
-                    <span className="text-[8px] text-slate-500 uppercase font-sans font-bold block">PZN-Nummer</span>
-                    <span className="text-slate-300 font-semibold">{prod.pzn}</span>
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="space-y-0.5">
+                      <span className="font-extrabold text-slate-200 text-sm block">{prod.name}</span>
+                      <span className="text-[10px] text-slate-400 font-mono font-medium block">
+                        Wirkstoff: <span className="text-slate-300 font-bold">{prod.wirkstoff || 'Nicht spezifiziert'}</span>
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleImportBfarmMed(prod)}
+                      className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600 border border-blue-500/30 text-blue-400 hover:text-white text-[10px] font-bold rounded-lg transition-all active:scale-95 cursor-pointer flex items-center gap-1 shrink-0"
+                    >
+                      <Plus className="h-3 w-3" /> Im Plan anlegen
+                    </button>
                   </div>
-                  <div className="bg-slate-900/60 p-1.5 rounded-lg border border-slate-850/40">
-                    <span className="text-[8px] text-slate-500 uppercase font-sans font-bold block">ATC-Code</span>
-                    <span className="text-slate-300 font-semibold">{prod.atc || 'N/A'}</span>
-                  </div>
-                  <div className="bg-slate-900/60 p-1.5 rounded-lg border border-slate-850/40">
-                    <span className="text-[8px] text-slate-500 uppercase font-sans font-bold block">Dosierung / Form</span>
-                    <span className="text-slate-300 truncate block">{prod.dose} • {prod.form}</span>
-                  </div>
-                  <div className="bg-slate-900/60 p-1.5 rounded-lg border border-slate-850/40">
-                    <span className="text-[8px] text-slate-500 uppercase font-sans font-bold block">Unternehmen</span>
-                    <span className="text-slate-300 truncate block">{prod.hersteller}</span>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-slate-900 text-[10px] text-slate-400 font-mono">
+                    <div className="bg-slate-900/60 p-1.5 rounded-lg border border-slate-850/40">
+                      <span className="text-[8px] text-slate-500 uppercase font-sans font-bold block">PZN-Nummer</span>
+                      <span className="text-slate-300 font-semibold">{prod.pzn}</span>
+                    </div>
+                    <div className="bg-slate-900/60 p-1.5 rounded-lg border border-slate-850/40">
+                      <span className="text-[8px] text-slate-500 uppercase font-sans font-bold block">ATC-Code</span>
+                      <span className="text-slate-300 font-semibold">{prod.atc || 'N/A'}</span>
+                    </div>
+                    <div className="bg-slate-900/60 p-1.5 rounded-lg border border-slate-850/40">
+                      <span className="text-[8px] text-slate-500 uppercase font-sans font-bold block">Dosierung / Form</span>
+                      <span className="text-slate-300 truncate block">{prod.dose || '—'} • {prod.form || '—'}</span>
+                    </div>
+                    <div className="bg-slate-900/60 p-1.5 rounded-lg border border-slate-850/40">
+                      <span className="text-[8px] text-slate-500 uppercase font-sans font-bold block">Unternehmen</span>
+                      <span className="text-slate-300 truncate block">{prod.hersteller || '—'}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
+          </div>
+        )}
+
+        {bfarmResults !== null && bfarmResults.length === 0 && (
+          <div className="p-5 bg-slate-950/70 border border-slate-850 rounded-2xl text-xs leading-normal text-slate-300 space-y-3.5">
+            <div className="flex items-center gap-2 text-amber-500 font-bold">
+              <AlertTriangle className="h-4 w-4" />
+              <span>Präparat oder PZN nicht im BfArM-Bestand gefunden</span>
+            </div>
+
+            <p className="text-[10px] text-slate-400 leading-relaxed">
+              Es konnten keine passenden Einträge für deine Suchanfrage im lokalen BfArM-Verzeichnis oder über den Echtzeit-Abgleich gefunden werden.
+            </p>
+
+            <div className="pt-2 border-t border-slate-900 space-y-2">
+              <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider block">Suchhilfe & nächste Schritte:</span>
+              <ul className="list-disc pl-4 space-y-1 text-[10px] text-slate-400">
+                <li>Prüfe die Pharmazentralnummer (PZN) auf Tippfehler. Eine gültige PZN hat 7 oder 8 Ziffern.</li>
+                <li>Stelle sicher, dass die PZN-Prüfziffer korrekt ist (Plausibilitätsprüfung läuft automatisch).</li>
+                <li>Bei ausländischen Präparaten oder Nahrungsergänzungsmitteln existiert oft keine deutsche PZN.</li>
+              </ul>
+            </div>
+
+            <div className="pt-3 flex gap-2">
+              <a
+                href={`https://www.google.com/search?q=PZN+${encodeURIComponent(searchTerm)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 text-center py-2 bg-slate-900 hover:bg-slate-800 border border-slate-850 text-slate-300 hover:text-slate-100 text-[10px] font-bold rounded-xl transition cursor-pointer"
+              >
+                🔍 Im Web nach PZN suchen
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  setName(searchTerm.match(/^\d+$/) ? '' : searchTerm);
+                  setDose('');
+                  setForm('');
+                  setPzn(searchTerm.match(/^\d+$/) ? searchTerm : '');
+                  setWirkstoff('');
+                  setSource('Manuelle Eingabe (Nicht gefunden)');
+                  setStand('');
+                  setVerified(false);
+                  setEditingMed(null);
+                  setShowAddForm(true);
+                }}
+                className="flex-1 py-2 bg-blue-600/10 hover:bg-blue-600 border border-blue-500/20 text-blue-400 hover:text-white text-[10px] font-bold rounded-xl transition cursor-pointer"
+              >
+                ➕ Trotzdem manuell anlegen
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -1330,9 +1538,9 @@ export default function MedsTab({
               type="button"
               onClick={handleToggleNotifications}
               className={`px-3.5 py-1.5 text-xs font-extrabold rounded-xl border transition-all cursor-pointer ${
-                settings.notificationsEnabled 
-                  ? 'bg-emerald-600/15 border-emerald-500/30 text-emerald-400' 
-                  : 'bg-slate-950 border-slate-850 text-slate-500 hover:text-slate-400'
+                settings.notificationsEnabled
+                  ? 'bg-emerald-600/15 border-emerald-500/30 text-emerald-400'
+                  : 'bg-slate-950 border-slate-850 text-slate-400 hover:text-slate-300'
               }`}
             >
               {settings.notificationsEnabled ? '✓ Aktiviert' : 'Deaktiviert'}
@@ -1361,8 +1569,19 @@ export default function MedsTab({
                 />
               </div>
 
+              <div className="space-y-1.5 sm:col-span-2">
+                <label className="text-[10px] font-bold uppercase text-slate-400">Wirkstoff</label>
+                <input
+                  type="text"
+                  value={wirkstoff}
+                  onChange={(e) => setWirkstoff(e.target.value)}
+                  placeholder="z.B. Pramipexol"
+                  className="w-full py-3 px-4 bg-slate-950 border border-slate-850 focus:border-blue-500 rounded-xl text-xs text-slate-200"
+                />
+              </div>
+
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase text-slate-400">Dosis / Stärke</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400">Dosis / Stärke *</label>
                 <input
                   type="text"
                   value={dose}
@@ -1424,6 +1643,48 @@ export default function MedsTab({
                   onChange={(e) => setThresholdDays(parseInt(e.target.value, 10) || 7)}
                   className="w-full py-3 px-4 bg-slate-950 border border-slate-850 focus:border-blue-500 rounded-xl text-xs text-slate-200"
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase text-slate-400">Datenquelle</label>
+                <input
+                  type="text"
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                  placeholder="z.B. Manuelle Eingabe"
+                  className="w-full py-3 px-4 bg-slate-950 border border-slate-850 focus:border-blue-500 rounded-xl text-xs text-slate-200"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase text-slate-400">Datenstand / Version</label>
+                <input
+                  type="text"
+                  value={stand}
+                  onChange={(e) => setStand(e.target.value)}
+                  placeholder="z.B. 09.07.2026"
+                  className="w-full py-3 px-4 bg-slate-950 border border-slate-850 focus:border-blue-500 rounded-xl text-xs text-slate-200"
+                />
+              </div>
+
+              <div className="sm:col-span-2 pt-2 border-t border-slate-850/60 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="verified-checkbox"
+                    checked={verified}
+                    onChange={(e) => setVerified(e.target.checked)}
+                    className="h-4 w-4 bg-slate-950 border border-slate-850 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                  />
+                  <label htmlFor="verified-checkbox" className="text-[10px] font-bold uppercase text-slate-400 cursor-pointer select-none">
+                    Offiziell verifiziert (BfArM-Datenbestand)
+                  </label>
+                </div>
+                {verified && source !== 'BfArM-Datenbank (Local Copy - Offline)' && (
+                  <span className="text-[9px] text-amber-500 font-semibold leading-normal">
+                    ⚠️ Hinweis: Dieser Eintrag wurde manuell angelegt oder stammt aus einer KI-Suche. Bitte verifiziere die PZN, den Wirkstoff und den Hersteller gründlich, bevor du ihn als verifiziert markierst.
+                  </span>
+                )}
               </div>
 
               <div className="sm:col-span-2 pt-2 border-t border-slate-850/60 space-y-2">
@@ -1495,7 +1756,7 @@ export default function MedsTab({
                 Wechselwirkungs-Details
               </h3>
             </div>
-            
+
             <div className="space-y-3.5 text-xs text-slate-300">
               <div>
                 <span className="text-[9px] uppercase font-bold text-slate-500">Betroffene Präparate:</span>

@@ -176,7 +176,7 @@ export default function Charts({ diary, selectedDays = 7, rangeDays, mood, meds 
               className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
                 range === days 
                   ? 'bg-blue-600/15 text-blue-400 border border-blue-500/25' 
-                  : 'text-slate-500 hover:text-slate-300 border border-transparent'
+                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
               }`}
             >
               {days} Tage

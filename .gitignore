@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Lokale produktive SQLite-Laufzeitdateien
+data/*.db
+data/*.db-wal
+data/*.db-shm

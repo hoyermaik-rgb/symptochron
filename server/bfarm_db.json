@@ -1,6 +1,6 @@
 [
   {
-    "pzn": "01243542",
+    "pzn": "01243549",
     "name": "Pramipexol AL 0,18 mg Tabletten",
     "wirkstoff": "Pramipexol-dihydrochlorid-monohydrat",
     "atc": "N04BC05",
@@ -10,7 +10,7 @@
     "packungsgröße": "100"
   },
   {
-    "pzn": "06554556",
+    "pzn": "06554550",
     "name": "Sifrol 0.088 mg Tabletten",
     "wirkstoff": "Pramipexol-dihydrochlorid-monohydrat",
     "atc": "N04BC05",
@@ -20,7 +20,7 @@
     "packungsgröße": "100"
   },
   {
-    "pzn": "04863001",
+    "pzn": "04863005",
     "name": "Neupro 1 mg/24 h transdermales Pflaster",
     "wirkstoff": "Rotigotin",
     "atc": "N04BC09",
@@ -30,7 +30,7 @@
     "packungsgröße": "30"
   },
   {
-    "pzn": "04863024",
+    "pzn": "04863028",
     "name": "Neupro 2 mg/24 h transdermales Pflaster",
     "wirkstoff": "Rotigotin",
     "atc": "N04BC09",
@@ -40,7 +40,7 @@
     "packungsgröße": "30"
   },
   {
-    "pzn": "04863053",
+    "pzn": "04863057",
     "name": "Neupro 3 mg/24 h transdermales Pflaster",
     "wirkstoff": "Rotigotin",
     "atc": "N04BC09",
@@ -50,7 +50,7 @@
     "packungsgröße": "30"
   },
   {
-    "pzn": "03135246",
+    "pzn": "03135249",
     "name": "Restex Tabletten",
     "wirkstoff": "Levodopa / Benserazid",
     "atc": "N04BA02",
@@ -60,7 +60,7 @@
     "packungsgröße": "100"
   },
   {
-    "pzn": "03135252",
+    "pzn": "03135255",
     "name": "Restex Retardkapseln",
     "wirkstoff": "Levodopa / Benserazid (Retardiert)",
     "atc": "N04BA02",
@@ -70,7 +70,7 @@
     "packungsgröße": "100"
   },
   {
-    "pzn": "01416439",
+    "pzn": "01416435",
     "name": "Madopar LT Tabletten",
     "wirkstoff": "Levodopa / Benserazid",
     "atc": "N04BA02",
@@ -80,7 +80,7 @@
     "packungsgröße": "100"
   },
   {
-    "pzn": "04825634",
+    "pzn": "04825631",
     "name": "Requip-Modutab 2 mg Retardtabletten",
     "wirkstoff": "Ropinirol",
     "atc": "N04BC04",
@@ -90,7 +90,7 @@
     "packungsgröße": "98"
   },
   {
-    "pzn": "04825672",
+    "pzn": "04825677",
     "name": "Ropinirol neuraxpharm 1 mg Tabletten",
     "wirkstoff": "Ropinirol",
     "atc": "N04BC04",
@@ -100,7 +100,7 @@
     "packungsgröße": "100"
   },
   {
-    "pzn": "04660235",
+    "pzn": "04660236",
     "name": "Gabapentin-neuraxpharm 300 mg Kapseln",
     "wirkstoff": "Gabapentin",
     "atc": "N03AX12",
@@ -110,7 +110,7 @@
     "packungsgröße": "100"
   },
   {
-    "pzn": "04660241",
+    "pzn": "04660242",
     "name": "Gabapentin-neuraxpharm 400 mg Kapseln",
     "wirkstoff": "Gabapentin",
     "atc": "N03AX12",
@@ -130,7 +130,7 @@
     "packungsgröße": "100"
   },
   {
-    "pzn": "10237421",
+    "pzn": "10237424",
     "name": "Lyrica 75 mg Hartkapseln",
     "wirkstoff": "Pregabalin",
     "atc": "N03AX16",
@@ -140,7 +140,7 @@
     "packungsgröße": "100"
   },
   {
-    "pzn": "10237438",
+    "pzn": "10237430",
     "name": "Lyrica 150 mg Hartkapseln",
     "wirkstoff": "Pregabalin",
     "atc": "N03AX16",
@@ -150,7 +150,7 @@
     "packungsgröße": "100"
   },
   {
-    "pzn": "00543210",
+    "pzn": "00213836",
     "name": "Rivotril 0,5 mg Tabletten",
     "wirkstoff": "Clonazepam",
     "atc": "N03AE01",
@@ -160,7 +160,7 @@
     "packungsgröße": "50"
   },
   {
-    "pzn": "06431245",
+    "pzn": "06431244",
     "name": "Targin 5mg/2,5mg Retardtabletten",
     "wirkstoff": "Oxycodon-hydrochlorid / Naloxon-hydrochlorid",
     "atc": "N02AA55",
@@ -170,7 +170,7 @@
     "packungsgröße": "100"
   },
   {
-    "pzn": "06431268",
+    "pzn": "06431267",
     "name": "Targin 10mg/5mg Retardtabletten",
     "wirkstoff": "Oxycodon-hydrochlorid / Naloxon-hydrochlorid",
     "atc": "N02AA55",
@@ -180,7 +180,7 @@
     "packungsgröße": "100"
   },
   {
-    "pzn": "04958223",
+    "pzn": "04958220",
     "name": "Magnesium Verla N Konzentrat",
     "wirkstoff": "Magnesiumbis(hydrogenaspartat)-dihydrat",
     "atc": "A12CC05",
@@ -190,7 +190,7 @@
     "packungsgröße": "50"
   },
   {
-    "pzn": "02534563",
+    "pzn": "02534562",
     "name": "Magnesium-Diasporal 300 mg Trinkpulver",
     "wirkstoff": "Magnesiumcitrat",
     "atc": "A12CC04",
@@ -200,7 +200,7 @@
     "packungsgröße": "50"
   },
   {
-    "pzn": "03131751",
+    "pzn": "03131754",
     "name": "Ibuflam 400 mg Lichtenstein Filmtabletten",
     "wirkstoff": "Ibuprofen",
     "atc": "M01AE01",
@@ -210,7 +210,7 @@
     "packungsgröße": "50"
   },
   {
-    "pzn": "01154359",
+    "pzn": "06718342",
     "name": "Paracetamol AL 500 mg Tabletten",
     "wirkstoff": "Paracetamol",
     "atc": "N02BE01",
@@ -220,7 +220,7 @@
     "packungsgröße": "30"
   },
   {
-    "pzn": "02441324",
+    "pzn": "07493129",
     "name": "Tramadol AL 50 mg Kapseln",
     "wirkstoff": "Tramadol-hydrochlorid",
     "atc": "N02AX02",

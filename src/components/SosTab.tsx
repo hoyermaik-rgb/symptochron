@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { 
-  AlertTriangle, 
-  User, 
-  Phone, 
-  HelpCircle, 
-  Save, 
-  ShieldAlert, 
-  Smartphone, 
-  Activity, 
-  Info, 
-  Award, 
-  Heart, 
-  Plus, 
-  Trash2 
+import {
+  AlertTriangle,
+  User,
+  Phone,
+  HelpCircle,
+  Save,
+  ShieldAlert,
+  Smartphone,
+  Activity,
+  Info,
+  Award,
+  Heart,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { SOSData, IceContact } from '../types';
 import { jsPDF } from 'jspdf';
@@ -31,6 +31,7 @@ export default function SosTab({ sosData, onSaveSosData, showToast }: SosTabProp
   const [allergies, setAllergies] = useState(sosData.allergies || '');
   const [diagnoses, setDiagnoses] = useState(sosData.diagnoses || '');
   const [emergencyNotes, setEmergencyNotes] = useState(sosData.emergencyNotes || '');
+  const [dsgvoConsent, setDsgvoConsent] = useState(false);
 
   const generateQrText = () => {
     let text = `SOS NOTFALLDATEN - SYMPTOCHRON\n`;
@@ -63,32 +64,32 @@ export default function SosTab({ sosData, onSaveSosData, showToast }: SosTabProp
     showToast('⏳ SOS-Notfallausweis wird generiert...');
     try {
       const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
-      
+
       const x = 20;
       const y1 = 20;
       const y2 = 79;
       const w = 85;
       const h = 54;
-      
+
       // --- FRONT SIDE ---
       doc.setDrawColor(30, 41, 59);
       doc.setLineWidth(0.3);
       doc.rect(x, y1, w, h);
-      
+
       doc.setFillColor(190, 24, 74);
       doc.rect(x + 0.2, y1 + 0.2, w - 0.4, 10, 'F');
-      
+
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.text('SOS NOTFALLKARTE', x + 5, y1 + 6.5);
-      
+
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(9);
       doc.text(`Name:`, x + 5, y1 + 18);
       doc.setFont('helvetica', 'normal');
       doc.text(patientName || 'Nicht angegeben', x + 16, y1 + 18);
-      
+
       doc.setFont('helvetica', 'bold');
       doc.text(`Geb.:`, x + 5, y1 + 24);
       doc.setFont('helvetica', 'normal');
@@ -131,7 +132,7 @@ export default function SosTab({ sosData, onSaveSosData, showToast }: SosTabProp
 
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(7.5);
-      
+
       doc.setFont('helvetica', 'bold');
       doc.text('Allergien / Risiken:', x + 5, y2 + 14);
       doc.setFont('helvetica', 'normal');
@@ -212,7 +213,7 @@ export default function SosTab({ sosData, onSaveSosData, showToast }: SosTabProp
 
     const updated = [...iceContacts, item];
     setIceContacts(updated);
-    
+
     onSaveSosData({
       ...sosData,
       iceContacts: updated,
@@ -245,8 +246,8 @@ export default function SosTab({ sosData, onSaveSosData, showToast }: SosTabProp
     <div className="space-y-6">
       {/* Visual red red red critical panic alert widget */}
       <div className={`p-6 border rounded-3xl transition-all duration-300 ${
-        alarmTriggered 
-          ? 'bg-rose-600/25 border-rose-500 animate-pulse text-rose-100' 
+        alarmTriggered
+          ? 'bg-rose-600/25 border-rose-500 animate-pulse text-rose-100'
           : 'bg-slate-900/40 border-slate-800 text-slate-300'
       }`}>
         <div className="flex flex-col sm:flex-row items-center gap-6 justify-between text-center sm:text-left">
@@ -264,8 +265,8 @@ export default function SosTab({ sosData, onSaveSosData, showToast }: SosTabProp
             type="button"
             onClick={handleTriggerWarningAlarm}
             className={`w-28 h-28 shrink-0 flex flex-col items-center justify-center rounded-full text-xs font-black uppercase text-white transition-all transform active:scale-95 cursor-pointer select-none ${
-              alarmTriggered 
-                ? 'bg-rose-500 border border-rose-455 shadow-2xl shadow-rose-500/50' 
+              alarmTriggered
+                ? 'bg-rose-500 border border-rose-455 shadow-2xl shadow-rose-500/50'
                 : 'bg-rose-600/90 hover:bg-rose-600 border border-rose-650 shadow-lg shadow-rose-600/20'
             }`}
           >
@@ -278,9 +279,9 @@ export default function SosTab({ sosData, onSaveSosData, showToast }: SosTabProp
       {/* SOS QR-Code Generator Card */}
       <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 flex flex-col md:flex-row items-center gap-6">
         <div className="bg-white p-3.5 rounded-2xl shrink-0 shadow-lg shadow-black/30">
-          <img 
+          <img
             src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(generateQrText())}`}
-            alt="Notfall QR-Code" 
+            alt="Notfall QR-Code"
             className="w-32 h-32"
           />
         </div>
@@ -389,10 +390,28 @@ export default function SosTab({ sosData, onSaveSosData, showToast }: SosTabProp
           </div>
         </div>
 
+        <div className="flex items-start gap-3 pt-3 pb-1">
+          <input
+            type="checkbox"
+            id="dsgvo-consent"
+            checked={dsgvoConsent}
+            onChange={(e) => setDsgvoConsent(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-slate-700 bg-slate-900 text-violet-600 focus:ring-violet-500 focus:ring-offset-slate-950"
+          />
+          <label htmlFor="dsgvo-consent" className="text-xs text-slate-400 leading-relaxed cursor-pointer">
+            Ich willige ausdrücklich ein, dass diese hochsensiblen Notfalldaten lokal in diesem Browser gespeichert und unverschlüsselt für den Notfallausweis verarbeitet werden dürfen (DSGVO).
+          </label>
+        </div>
+
         <button
           type="button"
           onClick={handleSaveProfile}
-          className="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-violet-600/10"
+          disabled={!dsgvoConsent}
+          className={`w-full py-3 rounded-xl text-xs font-bold transition-all shadow-md ${
+            dsgvoConsent
+              ? 'bg-violet-600 hover:bg-violet-500 text-white shadow-violet-600/10 cursor-pointer'
+              : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+          }`}
         >
           Notfallpass aktualisieren
         </button>
@@ -424,7 +443,7 @@ export default function SosTab({ sosData, onSaveSosData, showToast }: SosTabProp
                 <button
                   type="button"
                   onClick={() => handleDeleteIce(c.id)}
-                  className="p-1.5 text-slate-500 hover:text-rose-455 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-rose-455 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

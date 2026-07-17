@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Copy, 
   Mic, 
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { DiaryEntry, Medication } from '../types';
 import { todayStr, formatLocalDate, addDays, parseDate } from '../utils';
+import { extractFinalSpeechTranscript } from '../speechRecognition';
 import BodyMap from './BodyMap';
 
 interface DiaryTabProps {
@@ -71,6 +72,8 @@ export default function DiaryTab({
   // Speech input state
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
+  const isListeningRef = useRef(false);
+  const lastSpeechTranscriptRef = useRef('');
 
   // Sync state on date change
   useEffect(() => {
@@ -119,18 +122,34 @@ export default function DiaryTab({
       rec.maxAlternatives = 1;
 
       rec.onresult = (e: any) => {
-        const text = e.results[0][0].transcript;
+        const text = extractFinalSpeechTranscript(e);
+        if (!text || text === lastSpeechTranscriptRef.current) return;
+
+        lastSpeechTranscriptRef.current = text;
         setNotes(prev => (prev ? prev + ' ' : '') + text);
         showToast('🎤 Stimme in Text übersetzt!');
       };
 
-      rec.onend = () => setIsListening(false);
+      rec.onend = () => {
+        isListeningRef.current = false;
+        setIsListening(false);
+      };
       rec.onerror = () => {
+        isListeningRef.current = false;
         setIsListening(false);
         showToast('⚠️ Spracheingabe fehlgeschlagen.');
       };
 
       setRecognition(rec);
+
+      return () => {
+        isListeningRef.current = false;
+        try {
+          rec.abort();
+        } catch {
+          // Browser support for abort() varies; cleanup is best-effort.
+        }
+      };
     }
   }, []);
 
@@ -139,11 +158,19 @@ export default function DiaryTab({
       showToast('⚠️ Spracheingabe wird im Browser nicht unterstützt.');
       return;
     }
-    if (isListening) {
+    if (isListeningRef.current) {
       recognition.stop();
     } else {
+      isListeningRef.current = true;
+      lastSpeechTranscriptRef.current = '';
       setIsListening(true);
-      recognition.start();
+      try {
+        recognition.start();
+      } catch {
+        isListeningRef.current = false;
+        setIsListening(false);
+        showToast('⚠️ Spracheingabe läuft bereits oder konnte nicht gestartet werden.');
+      }
     }
   };
 
@@ -342,7 +369,7 @@ export default function DiaryTab({
                   ? 'bg-blue-600/10 border-blue-500 text-blue-400 shadow-md shadow-blue-500/5' 
                   : hasLog 
                     ? 'bg-slate-900 border-slate-800 text-slate-300' 
-                    : 'bg-slate-900/40 border-slate-900/60 text-slate-500 hover:text-slate-300'
+                    : 'bg-slate-900/40 border-slate-900/60 text-slate-400 hover:text-slate-200'
               }`}
             >
               <span className="text-[10px] font-bold uppercase">{daysAbbr[parsed.getDay()]}</span>

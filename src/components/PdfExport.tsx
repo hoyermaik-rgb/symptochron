@@ -12,6 +12,7 @@ interface GeneratePdfProps {
   rangeType: 'all' | 'sinceLast' | 'custom';
   customStart?: string;
   customEnd?: string;
+  isDemoMode?: boolean;
 }
 
 export function generatePDFReport({
@@ -21,6 +22,7 @@ export function generatePDFReport({
   rangeType,
   customStart,
   customEnd,
+  isDemoMode = false,
 }: GeneratePdfProps): jsPDF | null {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'l' });
 
@@ -66,19 +68,22 @@ export function generatePDFReport({
 
   // PAGE 1: COVER PAGE
   drawCoverPage(doc, pName, pBirth, createdAt, filteredDates, diary, meds, W, H);
+  if (isDemoMode) drawDemoWatermark(doc, W, H);
 
   // PAGE 2: TRENDS & BODY HEATMAP
   if (filteredDates.length > 0) {
     drawTrendsPage(doc, filteredDates, diary, pName, pBirth, createdAt, W, H);
+    if (isDemoMode) drawDemoWatermark(doc, W, H);
   }
 
   // PAGE 3: MEDICATION PLAN
   drawMedicationPage(doc, meds, pName, pBirth, createdAt, W, H);
+  if (isDemoMode) drawDemoWatermark(doc, W, H);
 
   // PAGE 4+: DATAMATRIX (Chronological records)
   if (filteredDates.length > 0) {
     doc.addPage('a4', 'l');
-    drawDataMatrix(doc, diary, filteredDates, pName, pBirth, createdAt, W, H);
+    drawDataMatrix(doc, diary, filteredDates, pName, pBirth, createdAt, W, H, isDemoMode);
   }
 
   return doc;
@@ -152,7 +157,7 @@ function drawCoverPage(
   dates.forEach(d => {
     const e = diary[d];
     if (!e) return;
-    
+
     meds.forEach(med => {
       const slots = ['morning', 'noon', 'evening', 'night'] as const;
       slots.forEach(slot => {
@@ -171,7 +176,7 @@ function drawCoverPage(
 
   const adherenceRate = totalScheduledSlots > 0 ? Math.round((totalTakenSlots / totalScheduledSlots) * 100) : null;
   const adherenceStr = adherenceRate !== null ? `${adherenceRate}%` : '–';
- 
+
   drawStatBox(doc, startX, y, boxW, boxH, String(dates.length), 'Tage erfasst');
   drawStatBox(doc, startX + boxW + gap, y, boxW, boxH, avgPainStr, 'Ø Schmerz / 10');
   drawStatBox(doc, startX + (boxW + gap) * 2, y, boxW, boxH, adherenceStr, 'Therapietreue');
@@ -185,7 +190,7 @@ function drawCoverPage(
 
   // --- Executive Summary Calculations ---
   const activeMedsList = meds.slice(0, 4);
-  
+
   let symptomTrend = 'Stabil / Keine Änderung';
   const half = Math.floor(dates.length / 2);
   if (half > 0) {
@@ -223,7 +228,7 @@ function drawCoverPage(
   const factorLabelsMap: Record<string, string> = {
     coffee: 'Koffein', alcohol: 'Alkohol', stress: 'Stress', sport: 'Sport', poorSleep: 'Schlafmangel'
   };
-  
+
   factorsKeys.forEach(fKey => {
     let xSum = 0, ySum = 0, x2Sum = 0, y2Sum = 0, xySum = 0, count = 0;
     dates.forEach(d => {
@@ -358,7 +363,7 @@ function drawCoverPage(
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
   doc.text(
-    'Dieser Bericht dient der Patientendokumentation und dem informativen Austausch mit medizinischem Fachpersonal. Er stellt keine direkte Diganose dar.',
+    'Dieser Bericht dient der Patientendokumentation und dem informativen Austausch mit medizinischem Fachpersonal. Er stellt keine direkte Diagnose dar.',
     m,
     H - 9
   );
@@ -914,12 +919,14 @@ function drawDataMatrix(
   pBirth: string,
   createdAt: string,
   W: number,
-  H: number
+  H: number,
+  isDemoMode?: boolean
 ) {
   const lm = 15;
   const rm = W - lm;
 
   drawMatrixHeader(doc, pName, pBirth, createdAt, lm, rm, W);
+  if (isDemoMode) drawDemoWatermark(doc, W, H);
 
   let y = 28;
 
@@ -947,6 +954,7 @@ function drawDataMatrix(
     if (y > H - 20) {
       doc.addPage('a4', 'l');
       drawMatrixHeader(doc, pName, pBirth, createdAt, lm, rm, W);
+      if (isDemoMode) drawDemoWatermark(doc, W, H);
       y = 28;
       drawMatrixColHeaders(doc, y, colX, lm, rm);
       y += 12;
@@ -1097,12 +1105,28 @@ function drawMatrixColHeaders(doc: jsPDF, y: number, colX: any, lm: number, rm: 
   doc.text('Notizen / Besonderheiten', colX.notes, y + 8);
 }
 
-export default function PdfExport({ diary, meds, mood, rlsSurveys, sosData }: {
+function drawDemoWatermark(doc: jsPDF, W: number, H: number) {
+  (doc as any).saveState();
+  doc.setTextColor(220, 38, 38); // red-600
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(40);
+  try {
+    const gState = new (doc as any).GState({ opacity: 0.08 });
+    (doc as any).setGState(gState);
+  } catch (e) {
+    doc.setTextColor(253, 226, 226); // fallback light red
+  }
+  doc.text('DEMO / TESTDATEN', W / 2, H / 2, { align: 'center', angle: 30 });
+  (doc as any).restoreState();
+}
+
+export default function PdfExport({ diary, meds, mood, rlsSurveys, sosData, isDemoMode = false }: {
   diary: Record<string, DiaryEntry>;
   meds: Medication[];
   mood: Record<string, MoodEntry>;
   rlsSurveys: Record<string, RLSSurvey>;
   sosData: SOSData;
+  isDemoMode?: boolean;
 }) {
   const [rangeType, setRangeType] = useState<'all' | 'sinceLast' | 'custom'>('all');
   const [customStart, setCustomStart] = useState('');
@@ -1118,7 +1142,8 @@ export default function PdfExport({ diary, meds, mood, rlsSurveys, sosData }: {
       },
       rangeType,
       customStart,
-      customEnd
+      customEnd,
+      isDemoMode
     });
 
     if (doc) {
@@ -1172,7 +1197,7 @@ export default function PdfExport({ diary, meds, mood, rlsSurveys, sosData }: {
         onClick={handleTriggerExport}
         className="w-full flex items-center justify-center gap-2.5 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-lg shadow-blue-600/10 cursor-pointer"
       >
-        <FileText className="h-4.5 w-4.5" /> 🩺 PDF Report generieren
+        <FileText className="h-4.5 w-4.5" /> {isDemoMode ? '🩺 Muster-Report generieren (Demo-Wasserzeichen)' : '🩺 PDF Report generieren'}
       </button>
     </div>
   );

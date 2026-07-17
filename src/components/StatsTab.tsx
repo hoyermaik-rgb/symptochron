@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Sparkles, 
-  Sliders, 
-  ChevronDown, 
-  Info, 
-  Coffee, 
+import {
+  BarChart3,
+  TrendingUp,
+  Sparkles,
+  Sliders,
+  ChevronDown,
+  Info,
+  Coffee,
   HelpCircle,
   Clock,
   Zap
@@ -53,7 +53,7 @@ export default function StatsTab({ diary, mood, rlsSurveys, meds }: StatsTabProp
     activeDates.forEach(date => {
       const e = diary[date];
       if (!e) return;
-      
+
       const p = dailyAvgPain(e);
       if (p !== null) {
         painSum += p;
@@ -142,7 +142,7 @@ export default function StatsTab({ diary, mood, rlsSurveys, meds }: StatsTabProp
       activeDates.forEach(date => {
         const e = diary[date];
         if (!e) return;
-        
+
         const isFactorTrue = !!(e.factors && e.factors[fKey]);
         const rVal = dailyAvgRls(e);
         const pVal = dailyAvgPain(e);
@@ -150,7 +150,7 @@ export default function StatsTab({ diary, mood, rlsSurveys, meds }: StatsTabProp
         if (rVal !== null || pVal !== null) {
           xFactor.push(isFactorTrue ? 1 : 0);
           if (isFactorTrue) activeCount++;
-          
+
           if (rVal !== null) yRls.push(rVal);
           if (pVal !== null) yPain.push(pVal);
         }
@@ -186,7 +186,7 @@ export default function StatsTab({ diary, mood, rlsSurveys, meds }: StatsTabProp
   // Highlight highest correlation for automatically discovered insights
   const getDiscoveredSmartInsights = () => {
     const list: string[] = [];
-    
+
     // Check coffee vs RLS
     const coffeeRel = triggerCorrelations.find(t => t.factor === 'coffee');
     if (coffeeRel && coffeeRel.corrRls !== null && coffeeRel.corrRls > 0.3) {
@@ -249,10 +249,10 @@ export default function StatsTab({ diary, mood, rlsSurveys, meds }: StatsTabProp
               key={days}
               type="button"
               onClick={() => setRangeDays(days)}
-              className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all ${
-                rangeDays === days 
-                  ? 'bg-blue-600 font-extrabold text-white shadow-md' 
-                  : 'text-slate-400 hover:text-slate-200'
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                rangeDays === days
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
               }`}
             >
               {days} Tage
@@ -336,7 +336,7 @@ export default function StatsTab({ diary, mood, rlsSurveys, meds }: StatsTabProp
           <h4 className="text-sm font-bold text-slate-100 uppercase tracking-widest">Statistische Trigger-Analyse</h4>
         </div>
         <p className="text-[11px] text-slate-500 mt-1 leading-normal">
-          Diese Tabelle zeigt die mathematische Abhängigkeit (Pearson-Korrelation) zwischen deinen eingepflegten Begleitfaktoren und Symptomen. 
+          Diese Tabelle zeigt die mathematische Abhängigkeit (Pearson-Korrelation) zwischen deinen eingepflegten Begleitfaktoren und Symptomen.
           Wert nahe <strong>+1.0</strong>: Starke Schmerz-/Kribbelverstärkung. Nahe <strong>-1.0</strong>: Lindernde Tendenz.
         </p>
 
@@ -381,11 +381,11 @@ export default function StatsTab({ diary, mood, rlsSurveys, meds }: StatsTabProp
           <Sparkles className="h-4.5 w-4.5 animate-pulse" />
           <h4 className="text-sm font-bold uppercase tracking-wider">Errechnete Verlaufserkenntnisse</h4>
         </div>
-        
+
         <ul className="space-y-3">
           {insights.map((ins, idx) => (
-            <li 
-              key={idx} 
+            <li
+              key={idx}
               className="text-xs text-slate-300 leading-normal font-sans border-l-2 border-violet-500/40 pl-3.5"
               dangerouslySetInnerHTML={{ __html: ins }}
             />

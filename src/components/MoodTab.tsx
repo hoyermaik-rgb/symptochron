@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Smile, 
@@ -23,6 +23,7 @@ import {
   gad7SeverityLabel, 
   addDays 
 } from '../utils';
+import { extractFinalSpeechTranscript } from '../speechRecognition';
 
 interface MoodTabProps {
   mood: Record<string, MoodEntry>;
@@ -127,6 +128,8 @@ export default function MoodTab({
   // Custom Speech Setup
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState<any>(null);
+  const isListeningRef = useRef(false);
+  const lastSpeechTranscriptRef = useRef('');
 
   // Questionnaire form states
   const [phqAnswers, setPhqAnswers] = useState<(number | null)[]>(Array(9).fill(null));
@@ -165,18 +168,34 @@ export default function MoodTab({
       rec.maxAlternatives = 1;
 
       rec.onresult = (e: any) => {
-        const text = e.results[0][0].transcript;
+        const text = extractFinalSpeechTranscript(e);
+        if (!text || text === lastSpeechTranscriptRef.current) return;
+
+        lastSpeechTranscriptRef.current = text;
         setNotes(prev => (prev ? prev + ' ' : '') + text);
         showToast('🎤 Stimme aufgezeichnet!');
       };
 
-      rec.onend = () => setIsListening(false);
+      rec.onend = () => {
+        isListeningRef.current = false;
+        setIsListening(false);
+      };
       rec.onerror = () => {
+        isListeningRef.current = false;
         setIsListening(false);
         showToast('⚠️ Spracheingabe fehlgeschlagen.');
       };
 
       setRecognition(rec);
+
+      return () => {
+        isListeningRef.current = false;
+        try {
+          rec.abort();
+        } catch {
+          // Browser support for abort() varies; cleanup is best-effort.
+        }
+      };
     }
   }, []);
 
@@ -185,15 +204,28 @@ export default function MoodTab({
       showToast('⚠️ Spracheingabe wird nicht unterstützt.');
       return;
     }
-    if (isListening) {
+    if (isListeningRef.current) {
       recognition.stop();
     } else {
+      isListeningRef.current = true;
+      lastSpeechTranscriptRef.current = '';
       setIsListening(true);
-      recognition.start();
+      try {
+        recognition.start();
+      } catch {
+        isListeningRef.current = false;
+        setIsListening(false);
+        showToast('⚠️ Spracheingabe läuft bereits oder konnte nicht gestartet werden.');
+      }
     }
   };
 
   const handleSaveCrisis = () => {
+    if (!person1.trim()) {
+      showToast('⚠️ Bitte mindestens Vertrauensperson 1 als Notfallkontakt angeben.');
+      return;
+    }
+
     onSaveCrisisPlan({
       therapist,
       doctor,
@@ -427,7 +459,7 @@ export default function MoodTab({
                 className={`p-3 text-left rounded-xl border text-[11px] leading-tight transition-all active:scale-[0.98] ${
                   isChecked
                     ? 'bg-rose-500/12 border-rose-500 text-rose-400 font-bold'
-                    : 'bg-slate-950/30 border-slate-850 text-slate-500 hover:text-slate-300'
+                    : 'bg-slate-950/30 border-slate-850 text-slate-400 hover:text-slate-200'
                 }`}
               >
                 {item.label}
@@ -535,7 +567,7 @@ export default function MoodTab({
                         className={`py-2 px-1 text-[9px] font-bold rounded-lg border transition-all active:scale-95 flex flex-col items-center justify-center min-h-[36px] ${
                           isActive 
                             ? 'bg-violet-600/15 border-violet-500 text-violet-400 font-extrabold shadow-md shadow-violet-500/5' 
-                            : 'bg-slate-950/40 border-slate-850 text-slate-500 hover:text-slate-350'
+                            : 'bg-slate-950/40 border-slate-850 text-slate-400 hover:text-slate-300'
                         }`}
                       >
                         <span className="text-xs leading-none mb-0.5">{val}</span>
@@ -609,7 +641,7 @@ export default function MoodTab({
                         className={`py-2 px-1 text-[9px] font-bold rounded-lg border transition-all active:scale-95 flex flex-col items-center justify-center min-h-[36px] ${
                           isActive 
                             ? 'bg-blue-600/15 border-blue-500 text-blue-400 font-extrabold shadow-md shadow-blue-500/5' 
-                            : 'bg-slate-950/40 border-slate-850 text-slate-500 hover:text-slate-350'
+                            : 'bg-slate-950/40 border-slate-850 text-slate-400 hover:text-slate-300'
                         }`}
                       >
                         <span className="text-xs leading-none mb-0.5">{val}</span>
@@ -686,12 +718,12 @@ export default function MoodTab({
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase text-slate-500">Vertrauensperson 1</label>
+            <label className="text-[10px] font-bold uppercase text-slate-500">Vertrauensperson 1 <span className="text-rose-500">*</span></label>
             <input
               type="text"
               value={person1}
               onChange={(e) => setPerson1(e.target.value)}
-              placeholder="Name &amp; Verbindung"
+              placeholder="Name & Verbindung (Pflichtfeld)"
               className="w-full py-3 px-4 bg-slate-950 border border-slate-850 rounded-xl text-xs text-slate-200"
             />
           </div>

@@ -38,28 +38,37 @@ import {
 import { 
   todayStr, 
   addDays, 
-  dailyAvgPain, 
   dailyAvgRls 
 } from './utils';
 
+import { secureStore } from './db/secureStore';
+
+const PIN_ENABLED_KEY = 'symptochron_pin_enabled';
+const LEGACY_PIN_KEY = 'symptochron_pin';
+const APP_MODE_KEY = 'symptochron_app_mode';
+const SECURE_DATA_KEYS = ['diary', 'meds', 'mood', 'surveys', 'appts', 'sos', 'bp', 'prefs'];
+
 // Subcomponents
-import Onboarding from './components/Onboarding';
+import Onboarding, { OnboardingCompletePayload } from './components/Onboarding';
 import PinLock from './components/PinLock';
 import WelcomeTab from './components/WelcomeTab';
 import DiaryTab from './components/DiaryTab';
 import RLSTab from './components/RLSTab';
-import MedsTab from './components/MedsTab';
 import MoodTab from './components/MoodTab';
-import StatsTab from './components/StatsTab';
 import SosTab from './components/SosTab';
-import ExportTab from './components/ExportTab';
 import LegalNotice from './components/LegalNotice';
+
+// Lazy loaded heavy tabs (AP-11)
+const MedsTab = React.lazy(() => import('./components/MedsTab'));
+const StatsTab = React.lazy(() => import('./components/StatsTab'));
+const ExportTab = React.lazy(() => import('./components/ExportTab'));
 
 export default function App() {
   // Global States
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [onboarded, setOnboarded] = useState<boolean>(false);
   const [locked, setLocked] = useState<boolean>(false);
+  const [isBooting, setIsBooting] = useState<boolean>(true);
   
   // Tab Navigator
   const [activeTab, setActiveTab] = useState<'welcome' | 'diary' | 'rls' | 'meds' | 'mood' | 'charts' | 'sos' | 'export'>('welcome');
@@ -85,6 +94,7 @@ export default function App() {
 
   // Settings & Secure PIN
   const [pinCode, setPinCode] = useState<string | null>(null);
+  const [pinEnabled, setPinEnabled] = useState<boolean>(false);
   const [uiPrefs, setUiPrefs] = useState<UiPrefs>({
     fontScale: 'normal',
     visibleModules: {
@@ -108,12 +118,72 @@ export default function App() {
   const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
   const [showBpModal, setShowBpModal] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState(false);
+  const [legalInitialTab, setLegalInitialTab] = useState<'impressum' | 'datenschutz'>('impressum');
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  const [appMode, setAppMode] = useState<'real' | 'demo'>('real');
+  const [demoQuery, setDemoQuery] = useState('');
+  const [demoResults, setDemoResults] = useState<any[]>([]);
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Blood Pressure logging States
   const [bpSystolic, setBpSystolic] = useState<number | ''>('');
   const [bpDiastolic, setBpDiastolic] = useState<number | ''>('');
   const [bpPulse, setBpPulse] = useState<number | ''>('');
+
+  const loadSecureData = async (pin: string | null, requirePinVerifier = false): Promise<boolean> => {
+    await secureStore.init(pin);
+
+    if (requirePinVerifier) {
+      const pinOk = await secureStore.verifyPin();
+      if (!pinOk) return false;
+    }
+
+    // Core dataset recovery & Migration
+    // Check for old clear-text data first to migrate
+    const oldDiary = localStorage.getItem('symptochron_diary');
+    const oldMeds = localStorage.getItem('symptochron_meds');
+    const oldMood = localStorage.getItem('symptochron_mood');
+    const oldSurveys = localStorage.getItem('symptochron_rls_surveys');
+    const oldAppts = localStorage.getItem('symptochron_appointments');
+    const oldSos = localStorage.getItem('symptochron_sos_data');
+    const oldBp = localStorage.getItem('symptochron_blood_pressure');
+    const oldPrefs = localStorage.getItem('symptochron_ui_prefs');
+
+    // Migrate if found
+    if (oldDiary) { await secureStore.save('diary', JSON.parse(oldDiary)); localStorage.removeItem('symptochron_diary'); }
+    if (oldMeds) { await secureStore.save('meds', JSON.parse(oldMeds)); localStorage.removeItem('symptochron_meds'); }
+    if (oldMood) { await secureStore.save('mood', JSON.parse(oldMood)); localStorage.removeItem('symptochron_mood'); }
+    if (oldSurveys) { await secureStore.save('surveys', JSON.parse(oldSurveys)); localStorage.removeItem('symptochron_rls_surveys'); }
+    if (oldAppts) { await secureStore.save('appts', JSON.parse(oldAppts)); localStorage.removeItem('symptochron_appointments'); }
+    if (oldSos) { await secureStore.save('sos', JSON.parse(oldSos)); localStorage.removeItem('symptochron_sos_data'); }
+    if (oldBp) { await secureStore.save('bp', JSON.parse(oldBp)); localStorage.removeItem('symptochron_blood_pressure'); }
+    if (oldPrefs) { await secureStore.save('prefs', JSON.parse(oldPrefs)); localStorage.removeItem('symptochron_ui_prefs'); }
+
+    // Load data from secure store
+    const loadedDiary = await secureStore.load('diary');
+    const loadedMeds = await secureStore.load('meds');
+    const loadedMood = await secureStore.load('mood');
+    const loadedSurveys = await secureStore.load('surveys');
+    const loadedAppts = await secureStore.load('appts');
+    const loadedSos = await secureStore.load('sos');
+    const loadedBp = await secureStore.load('bp');
+    const loadedPrefs = await secureStore.load('prefs');
+
+    if (loadedDiary) setDiary(loadedDiary);
+    if (loadedMeds) setMeds(loadedMeds);
+    if (loadedMood) setMood(loadedMood);
+    if (loadedSurveys) setRlsSurveys(loadedSurveys);
+    if (loadedAppts) setAppointments(loadedAppts);
+    if (loadedSos) {
+      setSosData(loadedSos);
+      if (loadedSos.patientName) setPatientName(loadedSos.patientName);
+    }
+    if (loadedBp) setBloodPressure(loadedBp);
+    if (loadedPrefs) setUiPrefs(loadedPrefs);
+
+    return true;
+  };
 
   // Initial Seed & Recovery
   useEffect(() => {
@@ -129,83 +199,82 @@ export default function App() {
       setOnboarded(true);
     }
 
-    // Determine PIN
-    const storedPin = localStorage.getItem('symptochron_pin');
-    if (storedPin) {
-      setPinCode(storedPin);
-      setLocked(true);
-    }
+    const storedAppMode = localStorage.getItem(APP_MODE_KEY);
+    setAppMode(storedAppMode === 'demo' ? 'demo' : 'real');
 
-    // Core dataset recovery
-    const loadedDiary = localStorage.getItem('symptochron_diary');
-    const loadedMeds = localStorage.getItem('symptochron_meds');
-    const loadedMood = localStorage.getItem('symptochron_mood');
-    const loadedSurveys = localStorage.getItem('symptochron_rls_surveys');
-    const loadedAppts = localStorage.getItem('symptochron_appointments');
-    const loadedSos = localStorage.getItem('symptochron_sos_data');
-    const loadedBp = localStorage.getItem('symptochron_blood_pressure');
-    const loadedPrefs = localStorage.getItem('symptochron_ui_prefs');
+    const bootSecureStore = async () => {
+      try {
+        const legacyStoredPin = localStorage.getItem(LEGACY_PIN_KEY);
+        const storedPinEnabled = localStorage.getItem(PIN_ENABLED_KEY) === 'true';
 
-    if (loadedDiary) setDiary(JSON.parse(loadedDiary));
-    if (loadedMeds) setMeds(JSON.parse(loadedMeds));
-    if (loadedMood) setMood(JSON.parse(loadedMood));
-    if (loadedSurveys) setRlsSurveys(JSON.parse(loadedSurveys));
-    if (loadedAppts) setAppointments(JSON.parse(loadedAppts));
-    if (loadedSos) {
-      const parsedSos = JSON.parse(loadedSos);
-      setSosData(parsedSos);
-      if (parsedSos.patientName) setPatientName(parsedSos.patientName);
-    }
-    if (loadedBp) setBloodPressure(JSON.parse(loadedBp));
-    if (loadedPrefs) setUiPrefs(JSON.parse(loadedPrefs));
+        if (legacyStoredPin) {
+          await secureStore.init(legacyStoredPin);
+          await secureStore.savePinVerifier();
+          localStorage.setItem(PIN_ENABLED_KEY, 'true');
+          localStorage.removeItem(LEGACY_PIN_KEY);
+          setPinEnabled(true);
+          setLocked(true);
+          return;
+        }
 
-    // Handle initial mock seed matching
-    const hasSeeded = localStorage.getItem('symptochron_seeded');
-    if (!hasSeeded && !loadedDiary) {
-      triggerSelfSeeding();
-    }
+        if (storedPinEnabled) {
+          setPinEnabled(true);
+          setLocked(true);
+          return;
+        }
+
+        await loadSecureData(null);
+      } catch (e) {
+        console.error("Boot failure:", e);
+      } finally {
+        setIsBooting(false);
+      }
+    };
+
+    bootSecureStore();
   }, []);
 
   // Sync state helpers to root local storages
+  // Sync state helpers to secure encrypted storage
   const syncDiary = (updated: Record<string, DiaryEntry>) => {
     setDiary(updated);
-    localStorage.setItem('symptochron_diary', JSON.stringify(updated));
+    secureStore.save('diary', updated).catch(console.error);
   };
 
   const syncMeds = (updated: Medication[]) => {
     setMeds(updated);
-    localStorage.setItem('symptochron_meds', JSON.stringify(updated));
+    secureStore.save('meds', updated).catch(console.error);
   };
 
   const syncMood = (updated: Record<string, MoodEntry>) => {
     setMood(updated);
-    localStorage.setItem('symptochron_mood', JSON.stringify(updated));
+    secureStore.save('mood', updated).catch(console.error);
   };
 
   const syncSurveys = (updated: Record<string, RLSSurvey>) => {
     setRlsSurveys(updated);
-    localStorage.setItem('symptochron_rls_surveys', JSON.stringify(updated));
+    secureStore.save('surveys', updated).catch(console.error);
   };
 
   const syncAppointments = (updated: Appointment[]) => {
     setAppointments(updated);
-    localStorage.setItem('symptochron_appointments', JSON.stringify(updated));
+    secureStore.save('appts', updated).catch(console.error);
   };
 
   const syncSosData = (updated: SOSData) => {
     setSosData(updated);
     if (updated.patientName) setPatientName(updated.patientName);
-    localStorage.setItem('symptochron_sos_data', JSON.stringify(updated));
+    secureStore.save('sos', updated).catch(console.error);
   };
 
   const syncBp = (updated: BloodPressureEntry[]) => {
     setBloodPressure(updated);
-    localStorage.setItem('symptochron_blood_pressure', JSON.stringify(updated));
+    secureStore.save('bp', updated).catch(console.error);
   };
 
   const syncPrefs = (updated: UiPrefs) => {
     setUiPrefs(updated);
-    localStorage.setItem('symptochron_ui_prefs', JSON.stringify(updated));
+    secureStore.save('prefs', updated).catch(console.error);
   };
 
   // Medication Reminders background poller
@@ -292,6 +361,21 @@ export default function App() {
       setToastMessage(null);
     }, 2800);
   };
+
+  // Automated 30-day Backup Reminder
+  useEffect(() => {
+    const lastBackup = localStorage.getItem('symptochron_last_backup_reminder');
+    const now = new Date().getTime();
+    // 30 days in ms = 30 * 24 * 60 * 60 * 1000 = 2592000000
+    if (!lastBackup || now - parseInt(lastBackup, 10) > 2592000000) {
+      const timer = setTimeout(() => {
+        setToastMessage('⚠️ Sicherheits-Erinnerung: Bitte erstelle heute ein verschlüsseltes Daten-Backup unter Export & Settings!');
+        setTimeout(() => setToastMessage(null), 5000);
+        localStorage.setItem('symptochron_last_backup_reminder', now.toString());
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Self seeding mock records for high fidelity views!
   const triggerSelfSeeding = () => {
@@ -443,32 +527,79 @@ export default function App() {
     syncMood(seededMood);
     syncSurveys(seededSurveys);
     syncSosData(seededSos);
-    syncBp(seededBp);
+  syncBp(seededBp);
 
-    localStorage.setItem('symptochron_seeded', 'true');
-    showToast('✨ Demo-Daten zur Visualisierung geladen!');
-  };
+  localStorage.setItem('symptochron_seeded', 'true');
+  localStorage.setItem(APP_MODE_KEY, 'demo');
+  setAppMode('demo');
+  showToast('✨ Demo-Daten zur Visualisierung geladen!');
+};
 
   // Onboarding Complete Handler
-  const handleCompleteOnboarding = (name: string, bday?: string) => {
-    setOnboarded(true);
-    localStorage.setItem('symptochron_onboarded', 'true');
+  const handleCompleteOnboarding = async ({ name, bday, pin, mode }: OnboardingCompletePayload) => {
+  setIsBooting(true);
+  try {
+    await secureStore.changePin(pinCode, pin, SECURE_DATA_KEYS);
+
+    setPinCode(pin);
+    setPinEnabled(true);
+    localStorage.setItem(PIN_ENABLED_KEY, 'true');
+    localStorage.removeItem(LEGACY_PIN_KEY);
 
     const updatedSos = { ...sosData, patientName: name, dob: bday || '' };
     syncSosData(updatedSos);
-    showToast('🎉 Onboarding abgeschlossen!');
-  };
 
-  // Secure PIN change
-  const handleConfigurePin = (newPin: string | null) => {
-    if (newPin) {
-      setPinCode(newPin);
-      localStorage.setItem('symptochron_pin', newPin);
-      showToast('🔒 PIN-Sperre erfolgreich eingerichtet.');
+    localStorage.setItem('symptochron_onboarded', 'true');
+    setOnboarded(true);
+
+    if (mode === 'demo') {
+      triggerSelfSeeding();
+      setActiveTab('welcome');
+    } else if (mode === 'import') {
+      localStorage.setItem(APP_MODE_KEY, 'real');
+      localStorage.removeItem('symptochron_seeded');
+      setAppMode('real');
+      setActiveTab('export');
+      showToast('📦 Wähle im Importbereich deine SymptoChron-Backupdatei aus.');
     } else {
-      setPinCode(null);
-      localStorage.removeItem('symptochron_pin');
-      showToast('🔓 PIN-Schutz deaktiviert.');
+      localStorage.setItem(APP_MODE_KEY, 'real');
+      localStorage.removeItem('symptochron_seeded');
+      setAppMode('real');
+      setActiveTab('welcome');
+      showToast('🎉 Onboarding abgeschlossen!');
+    }
+  } catch (e) {
+    console.error('Onboarding PIN setup failed:', e);
+    throw e;
+  } finally {
+    setIsBooting(false);
+  }
+};
+
+  // Secure PIN change & DB Re-encryption
+  const handleConfigurePin = async (newPin: string | null) => {
+    setIsBooting(true);
+    try {
+      await secureStore.changePin(pinCode, newPin, SECURE_DATA_KEYS);
+
+      if (newPin) {
+        setPinCode(newPin);
+        setPinEnabled(true);
+        localStorage.setItem(PIN_ENABLED_KEY, 'true');
+        localStorage.removeItem(LEGACY_PIN_KEY);
+        showToast('🔒 PIN-Sperre erfolgreich eingerichtet & Daten verschlüsselt.');
+      } else {
+        setPinCode(null);
+        setPinEnabled(false);
+        localStorage.removeItem(PIN_ENABLED_KEY);
+        localStorage.removeItem(LEGACY_PIN_KEY);
+        showToast('🔓 PIN-Schutz deaktiviert. Auto-Key gesetzt.');
+      }
+    } catch (e) {
+      console.error('Failed to change PIN:', e);
+      showToast('❌ Fehler bei der Neuausrichtung der Verschlüsselung.');
+    } finally {
+      setIsBooting(false);
     }
   };
 
@@ -741,6 +872,7 @@ export default function App() {
     setOnboarded(false);
     setLocked(false);
     setPinCode(null);
+    setAppMode('real');
     showToast('🗑️ Alle lokalen App-Daten vollständig gelöscht.');
   };
 
@@ -750,28 +882,56 @@ export default function App() {
     if (data.mood) syncMood(data.mood);
     if (data.rlsSurveys) syncSurveys(data.rlsSurveys);
     if (data.sosData) syncSosData(data.sosData);
+    localStorage.setItem(APP_MODE_KEY, 'real');
+    localStorage.removeItem('symptochron_seeded');
+    setAppMode('real');
   };
 
   // Toggle layout font sizes custom class on body or main frame
   const fontStyleClass = uiPrefs.fontScale === 'large' ? 'text-[108%]' : '';
+
+  // Intercept if booting/decrypting DB
+  if (isBooting) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400">
+        <motion.div
+          animate={{ scale: [1, 1.05, 1], opacity: [0.7, 1, 0.7] }}
+          transition={{ repeat: Infinity, duration: 1.5 }}
+          className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-black font-bold text-2xl shadow-lg shadow-white/10 font-serif select-none mb-6"
+        >
+          S
+        </motion.div>
+        <Lock className="w-5 h-5 mb-3 text-violet-400 animate-pulse" />
+        <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">Datenbank wird entschlüsselt...</h2>
+      </div>
+    );
+  }
 
   // Intercept if onboarding is active
   if (!onboarded) {
     return (
       <Onboarding 
         onComplete={handleCompleteOnboarding} 
-        onSkip={() => handleCompleteOnboarding('Patient', '')} 
       />
     );
   }
 
   // Intercept locked state
-  if (locked && pinCode) {
+  if (locked && pinEnabled) {
     return (
       <PinLock
         mode="lock"
-        checkPin={pinCode}
-        onSuccess={() => {
+        checkPin={null}
+        verifyPin={async (pin) => {
+          try {
+            return await loadSecureData(pin, true);
+          } catch (e) {
+            console.error('PIN verification failed:', e);
+            return false;
+          }
+        }}
+        onSuccess={(pin) => {
+          setPinCode(pin);
           setLocked(false);
           showToast('🔓 Willkommen zurück!');
         }}
@@ -803,11 +963,19 @@ export default function App() {
       </AnimatePresence>
 
       {/* Primary Header section */}
-      <header className={`sticky top-0 z-80 px-6 py-5 backdrop-blur-md border-b flex items-center justify-between transition-colors ${
-        theme === 'dark' ? 'bg-[#0A0A0A]/85 border-[#1F1F1F]' : 'bg-white/70 border-slate-200'
+      <header className={`sticky top-0 z-80 px-3 sm:px-6 py-3 sm:py-4 backdrop-blur-md border-b flex items-center justify-between transition-colors ${
+        theme === 'dark' ? 'bg-gradient-to-r from-black via-[#0A0A0A]/95 to-[#0A0A0A]/85 border-[#1F1F1F]' : 'bg-white/70 border-slate-200'
       }`}>
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-black font-bold text-lg shadow-sm font-serif select-none">S</div>
+          <img
+            src="/icon-192-header.png"
+            alt="SymptoChron Logo"
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = '/icon-192.png';
+            }}
+            className="h-8 w-auto sm:h-9 object-contain drop-shadow-md select-none shrink-0"
+          />
           <div>
             <p className="text-[10px] uppercase tracking-[0.3em] text-[#888] mb-0.5 leading-none">Diagnose &amp; Chronik</p>
             <h1 className="text-xl font-light tracking-tight italic font-serif text-slate-100">SymptoChron</h1>
@@ -848,7 +1016,7 @@ export default function App() {
       </header>
 
       {/* Main Container body panel */}
-      <main className="flex-1 w-full max-w-4xl mx-auto px-4 py-6 md:py-8 overflow-x-hidden">
+      <main className="flex-1 w-full max-w-4xl mx-auto px-4 pt-5 md:pt-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] overflow-x-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -858,7 +1026,13 @@ export default function App() {
             transition={{ duration: 0.2 }}
             className="w-full"
           >
-            {activeTab === 'welcome' && (
+            <React.Suspense fallback={
+              <div className="flex flex-col items-center justify-center py-24 text-slate-500 animate-pulse text-[10px] uppercase tracking-widest gap-3 font-semibold">
+                <div className="w-5 h-5 border-2 border-slate-800 border-t-blue-500 rounded-full animate-spin"></div>
+                Bereich wird geladen...
+              </div>
+            }>
+              {activeTab === 'welcome' && (
               <WelcomeTab
                 diary={diary}
                 meds={meds}
@@ -958,19 +1132,21 @@ export default function App() {
                 diary={diary}
                 meds={meds}
                 mood={mood}
-                rlsSurveys={rlsSurveys}
-                sosData={sosData}
-                onRestoreBackup={handleRestoreBackup}
+              rlsSurveys={rlsSurveys}
+              sosData={sosData}
+              isDemoMode={appMode === 'demo'}
+              onRestoreBackup={handleRestoreBackup}
                 onClearAllData={handleClearAllData}
                 showToast={showToast}
               />
             )}
+            </React.Suspense>
           </motion.div>
         </AnimatePresence>
       </main>
 
       {/* Floating Bottom Navigation Tab rails */}
-      <nav className={`fixed bottom-0 left-0 right-0 z-90 px-2 py-2 border-t backdrop-blur-xl flex justify-around transition-colors items-center h-[60px] ${
+      <nav className={`fixed bottom-0 left-0 right-0 z-90 px-2 py-2 border-t backdrop-blur-xl flex justify-around transition-colors items-center min-h-[60px] pb-[calc(0.5rem+env(safe-area-inset-bottom))] ${
         theme === 'dark' 
           ? 'bg-[#0A0A0A]/90 border-[#1F1F1F]' 
           : 'bg-white/85 border-slate-100/70'
@@ -1140,12 +1316,32 @@ export default function App() {
                   </button>
                 </div>
 
+                {/* Developer Demo API */}
+                <div className="space-y-3 pt-2.5 border-t border-slate-850/60">
+                  <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">🧪 Entwickleroptionen</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSettingsDrawer(false);
+                      setShowDemoModal(true);
+                    }}
+                    className="w-full py-3 bg-violet-600/10 hover:bg-violet-600/15 border border-violet-500/20 text-violet-400 rounded-xl text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    BfArM Demo-Suche testen
+                  </button>
+                </div>
+
                 {/* Seeding diagnostic trigger tools */}
                 <div className="space-y-2.5 pt-2">
                   <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">Datentransfer &amp; Demos</span>
                   <button
                     type="button"
                     onClick={() => {
+                      const hasRealData = Object.keys(diary).length > 0 || meds.length > 0 || Object.keys(mood).length > 0;
+                      if (appMode === 'real' && hasRealData) {
+                        showToast('⚠️ Demo-Daten können im Echtmodus mit vorhandenen Daten nicht geladen werden.');
+                        return;
+                      }
                       triggerSelfSeeding();
                       setShowSettingsDrawer(false);
                     }}
@@ -1162,7 +1358,7 @@ export default function App() {
                 <div className="flex gap-2.5 text-slate-550 font-sans font-bold uppercase text-[8px] justify-center tracking-wider">
                   <button 
                     type="button" 
-                    onClick={() => { setShowSettingsDrawer(false); setShowLegalModal(true); }} 
+                    onClick={() => { setLegalInitialTab('impressum'); setShowSettingsDrawer(false); setShowLegalModal(true); }} 
                     className="hover:text-blue-400 transition cursor-pointer"
                   >
                     Impressum
@@ -1170,7 +1366,7 @@ export default function App() {
                   <span>·</span>
                   <button 
                     type="button" 
-                    onClick={() => { setShowSettingsDrawer(false); setShowLegalModal(true); }} 
+                    onClick={() => { setLegalInitialTab('datenschutz'); setShowSettingsDrawer(false); setShowLegalModal(true); }} 
                     className="hover:text-blue-400 transition cursor-pointer"
                   >
                     Datenschutz
@@ -1288,10 +1484,99 @@ export default function App() {
         </div>
       )}
 
+      {/* BfArM Demo Search Modal */}
+      {showDemoModal && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center p-4 sm:p-0">
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setShowDemoModal(false)} />
+          <div className="relative w-full sm:w-[500px] sm:mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl flex flex-col max-h-[85vh]">
+            <h3 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
+              🧪 BfArM Demo API Suche
+            </h3>
+            
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                placeholder="PZN, Wirkstoff oder Name suchen..."
+                value={demoQuery}
+                onChange={(e) => setDemoQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setIsDemoLoading(true);
+                    fetch('/api/bfarm/demo-search', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ query: demoQuery })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                      setDemoResults(data.results || []);
+                      setIsDemoLoading(false);
+                    })
+                    .catch(() => setIsDemoLoading(false));
+                  }
+                }}
+                className="flex-1 bg-slate-950 border border-slate-850 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-violet-500"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!demoQuery.trim()) return;
+                  setIsDemoLoading(true);
+                  fetch('/api/bfarm/demo-search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: demoQuery })
+                  })
+                  .then(res => res.json())
+                  .then(data => {
+                    setDemoResults(data.results || []);
+                    setIsDemoLoading(false);
+                  })
+                  .catch(() => setIsDemoLoading(false));
+                }}
+                className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-bold transition-all"
+              >
+                Suchen
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+              {isDemoLoading ? (
+                <div className="text-center text-sm text-slate-500 py-4">Suche läuft...</div>
+              ) : demoResults.length > 0 ? (
+                demoResults.map((m: any, i: number) => (
+                  <div key={i} className="p-3 bg-slate-950/50 border border-slate-850 rounded-xl">
+                    <div className="text-sm font-bold text-slate-200">{m.name}</div>
+                    <div className="text-xs text-slate-400 mt-1">Wirkstoff: {m.wirkstoff || 'unbekannt'}</div>
+                    <div className="flex gap-4 mt-2 text-[10px] text-slate-500 font-mono">
+                      <span>PZN: {m.pzn}</span>
+                      <span>Form: {m.form || '-'}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-sm text-slate-500 py-4">
+                  {demoQuery ? 'Keine Ergebnisse gefunden.' : 'Bitte gib einen Suchbegriff ein.'}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowDemoModal(false)}
+              className="mt-4 w-full py-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 rounded-xl text-sm font-bold transition-all"
+            >
+              Schließen
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Impressum & Datenschutz disclosure dialog */}
       <LegalNotice 
         isOpen={showLegalModal} 
-        onClose={() => setShowLegalModal(false)} 
+        onClose={() => setShowLegalModal(false)}
+        initialTab={legalInitialTab}
       />
     </div>
   );

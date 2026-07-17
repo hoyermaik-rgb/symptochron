@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Sparkles, 
-  Brain, 
-  CheckCircle2, 
-  TrendingDown, 
-  TrendingUp, 
-  AlertCircle, 
-  Clock, 
-  ShieldAlert, 
+import {
+  Sparkles,
+  Brain,
+  CheckCircle2,
+  TrendingDown,
+  TrendingUp,
+  AlertCircle,
+  Clock,
+  ShieldAlert,
   RefreshCw,
   Heart,
   Calendar,
@@ -39,29 +39,76 @@ export default function AiTrendAnalysis({ diary, meds }: AiTrendAnalysisProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [lastAnalysisDate, setLastAnalysisDate] = useState<string | null>(null);
+  const [consent, setConsent] = useState(() => localStorage.getItem('symptochron_ai_consent') === 'true');
 
   // Load cached analysis from localstorage if available
   useEffect(() => {
+    if (!consent) return; // Do not read cache if consent is missing
+
     const cached = localStorage.getItem('symptochron_ai_analysis');
+    const cachedDate = localStorage.getItem('symptochron_ai_analysis_date');
     if (cached) {
       try {
         setResult(JSON.parse(cached));
+        if (cachedDate) setLastAnalysisDate(cachedDate);
       } catch (e) {
         console.error('Failed to parse cached analysis:', e);
       }
     }
-  }, []);
+  }, [consent]);
+
+  if (!consent) {
+    return (
+      <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 space-y-4">
+        <div className="flex gap-3">
+          <div className="p-2.5 bg-blue-600/10 border border-blue-500/25 rounded-2xl">
+            <Sparkles className="h-5 w-5 text-blue-400 animate-pulse" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-100 uppercase tracking-widest">KI-Trendanalyse aktivieren</h4>
+            <p className="text-[10px] text-slate-500 mt-0.5">Opt-in für smarte Verlaufstrends & Analysen</p>
+          </div>
+        </div>
+
+        <div className="text-xs text-slate-400 space-y-2.5 leading-relaxed font-sans pl-1">
+          <p>
+            Um dir detaillierte 30-Tage-Verlaufstrends anzubieten, nutzt diese App optional die <strong>Google Gemini API</strong> auf unserem Server.
+          </p>
+          <p className="text-[11px] bg-slate-950/60 p-3 border border-slate-850 rounded-xl text-slate-350 flex gap-2">
+            🔒 <strong>Datenschutz-Garantie:</strong> Bevor Daten übertragen werden, filtert unser lokaler Datenschutzfilter (AI Privacy Guard) sämtliche personenbezogene Angaben wie Namen, E-Mails, Telefonnummern, Adressen und Geburtsdaten vollständig aus. Es werden ausschließlich anonyme Symptomdaten und Medikamentennamen übertragen.
+          </p>
+          <p>
+            Du kannst diese Einwilligung jederzeit in den <strong>Einstellungen (Export & Reset)</strong> widerrufen. Dabei werden alle lokalen KI-Analysen gelöscht.
+          </p>
+        </div>
+
+        <div className="pt-2 flex gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.setItem('symptochron_ai_consent', 'true');
+              setConsent(true);
+            }}
+            className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all active:scale-[0.98] cursor-pointer text-center"
+          >
+            Einwilligen & Aktivieren
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Format 30 day records
   const generateDataPayload = () => {
     const dataPoints = [];
     const today = new Date();
-    
+
     for (let i = 29; i >= 0; i--) {
       const d = new Date();
       d.setDate(today.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
-      
+
       const entry = diary[dateStr];
       if (entry) {
         // Compute daily average RLS severity
@@ -71,7 +118,7 @@ export default function AiTrendAnalysis({ diary, meds }: AiTrendAnalysisProps) {
           entry.evening_rls,
           entry.night_rls
         ].filter((v): v is number => typeof v === 'number');
-        const avgRls = rlsParts.length > 0 
+        const avgRls = rlsParts.length > 0
           ? parseFloat((rlsParts.reduce((a, b) => a + b, 0) / rlsParts.length).toFixed(1))
           : null;
 
@@ -98,7 +145,7 @@ export default function AiTrendAnalysis({ diary, meds }: AiTrendAnalysisProps) {
 
   const handleRunAnalysis = async () => {
     const payload = generateDataPayload();
-    
+
     if (payload.dataPoints.length === 0) {
       setError('⚠️ Keine Logbuch-Einträge aus den letzten 30 Tagen gefunden. Bitte erfasse zuerst Daten im Tagebuch!');
       return;
@@ -123,7 +170,10 @@ export default function AiTrendAnalysis({ diary, meds }: AiTrendAnalysisProps) {
 
       const parsed: AnalysisResult = await response.json();
       setResult(parsed);
+      const todayStr = new Date().toISOString().split('T')[0];
+      setLastAnalysisDate(todayStr);
       localStorage.setItem('symptochron_ai_analysis', JSON.stringify(parsed));
+      localStorage.setItem('symptochron_ai_analysis_date', todayStr);
     } catch (err: any) {
       console.error('Error running AI analysis:', err);
       setError(err?.message || 'Fehler bei der Verbindung mit dem Analyse-Server. Bitte versuche es später noch einmal.');
@@ -145,6 +195,8 @@ export default function AiTrendAnalysis({ diary, meds }: AiTrendAnalysisProps) {
 
   const loggedDaysCount = generateDataPayload().dataPoints.length;
 
+  const isAnalyzedToday = lastAnalysisDate === new Date().toISOString().split('T')[0];
+
   return (
     <div className="bg-linear-to-br from-violet-600/10 via-blue-600/5 to-slate-900 border border-violet-500/15 p-6 rounded-3xl space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -160,11 +212,11 @@ export default function AiTrendAnalysis({ diary, meds }: AiTrendAnalysisProps) {
 
         <button
           type="button"
-          disabled={loading}
+          disabled={loading || isAnalyzedToday}
           onClick={handleRunAnalysis}
           className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-2 border transition-all cursor-pointer select-none ${
-            loading 
-              ? 'bg-violet-600/10 border-violet-500/30 text-violet-300' 
+            loading || isAnalyzedToday
+              ? 'bg-violet-600/10 border-violet-500/30 text-violet-300 cursor-not-allowed'
               : 'bg-violet-600 hover:bg-violet-500 border-violet-500 text-white shadow-lg shadow-violet-500/10 active:scale-97'
           }`}
         >
@@ -172,6 +224,11 @@ export default function AiTrendAnalysis({ diary, meds }: AiTrendAnalysisProps) {
             <>
               <RefreshCw className="h-3.5 w-3.5 animate-spin" />
               Daten werden analysiert...
+            </>
+          ) : isAnalyzedToday ? (
+            <>
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Heute bereits analysiert
             </>
           ) : result ? (
             <>
@@ -274,8 +331,8 @@ export default function AiTrendAnalysis({ diary, meds }: AiTrendAnalysisProps) {
             </h5>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {result.correlations && result.correlations.map((c, idx) => (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   className="p-4 rounded-2xl bg-slate-950/20 border border-slate-850/70 flex flex-col justify-between space-y-3.5"
                 >
                   <div className="space-y-2">
