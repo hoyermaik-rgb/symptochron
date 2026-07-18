@@ -11,6 +11,35 @@ interface RemoteEncryptedRecord {
   ciphertextBase64: string;
 }
 
+export interface SecureStoreMigrationRecord {
+  recordKey: string;
+  value: any | null;
+  localHash: string | null;
+  remoteHash: string | null;
+  localCounts: {
+    size: number;
+    ids: string[];
+    dateKeys: string[];
+  };
+  remoteCounts: {
+    size: number;
+    ids: string[];
+    dateKeys: string[];
+  };
+  status: 'pending' | 'uploaded' | 'verified' | 'conflict' | 'failed';
+  error?: string;
+}
+
+export interface SecureStoreMigrationResult {
+  recordKey: string;
+  status: 'pending' | 'uploaded' | 'verified' | 'conflict' | 'failed';
+  localHash: string | null;
+  remoteHash: string | null;
+  localCounts: SecureStoreMigrationRecord['localCounts'];
+  remoteCounts: SecureStoreMigrationRecord['remoteCounts'];
+  error?: string;
+}
+
 class SecureStore {
   private cryptoKey: CryptoKey | null = null;
   private readonly SALT_KEY = 'symptochron_crypto_salt';
@@ -19,6 +48,162 @@ class SecureStore {
 
   public isInitialized(): boolean {
     return this.cryptoKey !== null;
+  }
+
+  public getMigrationRecordKeys(): string[] {
+    return ['diary', 'meds', 'mood', 'surveys', 'appts', 'sos', 'bp', 'prefs', '__pin_verifier'];
+  }
+
+  public async getLocalRecordKeys(): Promise<string[]> {
+    const keys = this.getMigrationRecordKeys();
+    const present: string[] = [];
+    for (const key of keys) {
+      const record = await get(key);
+      if (record) present.push(key);
+    }
+    return present;
+  }
+
+  public async readLocalRecord(key: string): Promise<any | null> {
+    const record = await get(key);
+    if (!record) return null;
+    return this.decryptRecord(record);
+  }
+
+  public async readRemoteRecordValue(key: string): Promise<any | null> {
+    const remoteRecord = await this.loadRemoteRecord(key);
+    if (!remoteRecord) return null;
+    return this.decryptRecord(remoteRecord);
+  }
+
+  public async calculateRecordHash(value: any): Promise<string> {
+    const canonical = this.canonicalize(value);
+    const encoded = new TextEncoder().encode(canonical);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+    return this.arrayBufferToBase64(hashBuffer);
+  }
+
+  public summarizeRecord(value: any): { size: number; ids: string[]; dateKeys: string[] } {
+    if (Array.isArray(value)) {
+      return {
+        size: value.length,
+        ids: value.map((item) => typeof item?.id === 'string' ? item.id : '').filter(Boolean),
+        dateKeys: [],
+      };
+    }
+    if (value && typeof value === 'object') {
+      const keys = Object.keys(value);
+      return {
+        size: keys.length,
+        ids: this.extractIds(value),
+        dateKeys: keys.filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key)),
+      };
+    }
+    return { size: value === null || value === undefined ? 0 : 1, ids: [], dateKeys: [] };
+  }
+
+  public async migrateRecord(key: string): Promise<SecureStoreMigrationResult> {
+    if (!this.cryptoKey) throw new Error("SecureStore not initialized");
+
+    const localRecord = await get(key);
+    const remoteRecord = await this.loadRemoteRecord(key, true);
+    const localValue = localRecord ? await this.decryptRecord(localRecord) : null;
+    const remoteValue = remoteRecord ? await this.decryptRecord(remoteRecord) : null;
+    const localCounts = this.summarizeRecord(localValue);
+    const remoteCounts = this.summarizeRecord(remoteValue);
+    const localHash = localValue === null ? null : await this.calculateRecordHash(localValue);
+    const remoteHash = remoteValue === null ? null : await this.calculateRecordHash(remoteValue);
+
+    if (!localRecord && !remoteRecord) {
+      return { recordKey: key, status: 'failed', localHash, remoteHash, localCounts, remoteCounts, error: 'Kein lokaler oder zentraler Datensatz vorhanden.' };
+    }
+
+    if (localRecord && localValue === null) {
+      return { recordKey: key, status: 'failed', localHash, remoteHash, localCounts, remoteCounts, error: 'Lokaler Datensatz ist beschädigt oder nicht entschlüsselbar.' };
+    }
+
+    if (remoteRecord && remoteValue === null) {
+      return { recordKey: key, status: 'failed', localHash, remoteHash, localCounts, remoteCounts, error: 'Zentraler Datensatz ist beschädigt oder nicht entschlüsselbar.' };
+    }
+
+    if (!localRecord && remoteValue !== null) {
+      return { recordKey: key, status: 'failed', localHash, remoteHash, localCounts, remoteCounts, error: 'Lokaler Kernbereich fehlt.' };
+    }
+
+    if (localValue !== null && remoteValue !== null && localHash !== remoteHash) {
+      return { recordKey: key, status: 'conflict', localHash, remoteHash, localCounts, remoteCounts, error: 'Lokaler und zentraler Datensatz unterscheiden sich.' };
+    }
+
+    if (localRecord && remoteValue === null) {
+      const uploaded = await this.saveRemoteRecord(key, localRecord);
+      if (!uploaded) {
+        return { recordKey: key, status: 'failed', localHash, remoteHash, localCounts, remoteCounts, error: 'Upload zum Server fehlgeschlagen.' };
+      }
+    }
+
+    const verifiedValue = await this.readRemoteRecordValue(key);
+    const verifiedHash = verifiedValue === null ? null : await this.calculateRecordHash(verifiedValue);
+    const verifiedCounts = this.summarizeRecord(verifiedValue);
+
+    if (localValue !== null && (verifiedHash !== localHash || verifiedCounts.size !== localCounts.size)) {
+      return { recordKey: key, status: 'failed', localHash, remoteHash: verifiedHash, localCounts, remoteCounts: verifiedCounts, error: 'Verifikation nach Upload fehlgeschlagen.' };
+    }
+
+    return {
+      recordKey: key,
+      status: verifiedValue !== null ? 'verified' : 'uploaded',
+      localHash,
+      remoteHash: verifiedHash,
+      localCounts,
+      remoteCounts: verifiedCounts,
+    };
+  }
+
+  private canonicalize(value: any): string {
+    if (value === null || value === undefined) return 'null';
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => this.canonicalize(item)).join(',')}]`;
+    }
+    if (typeof value === 'object') {
+      const keys = Object.keys(value).sort();
+      return `{${keys.map((key) => `${JSON.stringify(key)}:${this.canonicalize(value[key])}`).join(',')}}`;
+    }
+    return JSON.stringify(value);
+  }
+
+  private extractIds(value: any): string[] {
+    if (Array.isArray(value)) {
+      return value.map((item) => typeof item?.id === 'string' ? item.id : '').filter(Boolean);
+    }
+    if (value && typeof value === 'object') {
+      const ids: string[] = [];
+      for (const item of Object.values(value)) {
+        if (Array.isArray(item)) {
+          for (const entry of item) {
+            if (typeof entry?.id === 'string') ids.push(entry.id);
+          }
+        } else if (item && typeof item === 'object' && typeof (item as any).id === 'string') {
+          ids.push((item as any).id);
+        }
+      }
+      return ids;
+    }
+    return [];
+  }
+
+  private async decryptRecord(record: EncryptedRecord): Promise<any | null> {
+    if (!this.cryptoKey) throw new Error("SecureStore not initialized");
+    try {
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: record.iv },
+        this.cryptoKey,
+        record.data
+      );
+      const dec = new TextDecoder();
+      return JSON.parse(dec.decode(decrypted));
+    } catch {
+      return null;
+    }
   }
 
   // Base64 Helpers
@@ -164,10 +349,12 @@ class SecureStore {
   }
 
   private canUseRemoteStore(): boolean {
-    return typeof fetch === 'function' && typeof location !== 'undefined' && /^https?:$/.test(location.protocol);
+    if (typeof fetch !== 'function') return false;
+    if (typeof location === 'undefined') return true;
+    return /^https?:$/.test(location.protocol);
   }
 
-  private async loadRemoteRecord(key: string): Promise<EncryptedRecord | null> {
+  private async loadRemoteRecord(key: string, strict = false): Promise<EncryptedRecord | null> {
     if (!this.canUseRemoteStore()) return null;
     try {
       const response = await fetch(`/api/secure-records/${encodeURIComponent(key)}`, {
@@ -183,6 +370,7 @@ class SecureStore {
         data: this.base64ToArrayBuffer(record.ciphertextBase64),
       };
     } catch (error) {
+      if (strict) throw error;
       console.warn('SQLite secure-record load unavailable; using encrypted offline cache.', error);
       return null;
     }

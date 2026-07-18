@@ -57,6 +57,8 @@ import RLSTab from './components/RLSTab';
 import MoodTab from './components/MoodTab';
 import SosTab from './components/SosTab';
 import LegalNotice from './components/LegalNotice';
+import PrivateMigrationPanel from './components/PrivateMigrationPanel';
+import { readMigrationStatus, isPrivateMigrationEnabled } from './migration/privateMigration';
 
 // Lazy loaded heavy tabs (AP-11)
 const MedsTab = React.lazy(() => import('./components/MedsTab'));
@@ -125,6 +127,7 @@ export default function App() {
   const [demoResults, setDemoResults] = useState<any[]>([]);
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [privateMigrationVisible, setPrivateMigrationVisible] = useState(false);
 
   // Blood Pressure logging States
   const [bpSystolic, setBpSystolic] = useState<number | ''>('');
@@ -861,6 +864,11 @@ export default function App() {
   };
 
   const handleClearAllData = () => {
+    const migrationStatus = readMigrationStatus();
+    if (isPrivateMigrationEnabled() && migrationStatus.verificationStatus === 'in_progress') {
+      showToast('⚠️ Löschfunktion während aktiver Migration blockiert.');
+      return;
+    }
     localStorage.clear();
     setDiary({});
     setMeds([]);
@@ -1349,8 +1357,21 @@ export default function App() {
                   >
                     <span>Lade 10 Tage RLS-Demo-Daten</span>
                     <Sparkles className="h-4 w-4 text-violet-400 shrink-0" />
-                  </button>
+                    </button>
                 </div>
+
+                {isPrivateMigrationEnabled() && (
+                  <div className="space-y-2.5 pt-2 border-t border-slate-850/60">
+                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">🛠 Private Erstübernahme</span>
+                    <button
+                      type="button"
+                      onClick={() => setPrivateMigrationVisible(true)}
+                      className="w-full py-3 bg-emerald-600/10 hover:bg-emerald-600/15 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                      Verlustfreie Migration öffnen
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="text-[9px] text-slate-600 font-mono text-center pt-8 space-y-2 flex flex-col items-center">
@@ -1578,6 +1599,28 @@ export default function App() {
         onClose={() => setShowLegalModal(false)}
         initialTab={legalInitialTab}
       />
+
+      {privateMigrationVisible && isPrivateMigrationEnabled() && (
+        <div className="fixed inset-0 z-120 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-800 bg-slate-900 p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-100">SC-MD-01 Private Erstübernahme</h3>
+                <p className="text-xs text-slate-400">Nur für Entwicklerzugriff. Keine automatische Ausführung beim Start.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPrivateMigrationVisible(false)}
+                className="rounded-xl border border-slate-800 px-3 py-1.5 text-xs text-slate-300"
+              >
+                Schließen
+              </button>
+            </div>
+
+            <PrivateMigrationPanel showToast={showToast} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

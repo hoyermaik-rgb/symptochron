@@ -219,7 +219,40 @@ Aenderungen:
 - `src/App.tsx`: Umschließen der Navigation-Container mit einer `<React.Suspense>` Ladeschranke mit animiertem Lade-Spinner.
 - `vite.config.ts`: Feinjustierung der manualChunks-Aufteilung, sodass jsPDF, html5-qrcode, lucide-react und motion als separate, bedarfsweise geladene Dateien ausgelagert werden.
 
-Abnahme: Erfolgreiches Code-Splitting im Vite-Build. Der anfängliche Hauptbundle-Chunk verringert sich von 294.67 kB auf 162.40 kB (eine Reduzierung um fast 45%). Lazy-loading Tabs funktionieren fehlerfrei mit Loading-Fallbacks.
+### SC-MD-01: Verlustfreie Erstuebernahme vorhandener Handy-Daten
+
+Ziel laut Auftrag: Eine einmalig gestartete private Erstuebernahme der vorhandenen Handy-Daten in die zentrale SQLite-Datenbank `data/symptochron.db`, ohne Datenverlust und ohne Delete-Operationen.
+
+Aenderungen:
+
+- `src/db/secureStore.ts`: neue Migrationshilfen fuer lokale/remote Verifikation, Hashbildung und Record-Summen.
+- `src/migration/privateMigration.ts`: versionierter Migrationsstatus, Device-ID und Schutzfunktionen fuer den privaten Erstuebernahme-Modus.
+- `src/components/PrivateMigrationPanel.tsx`: abgeschirmte Entwickleransicht mit Snapshot-Bestaetigung, Statusanzeige und Start-Button.
+- `src/App.tsx`: private Migrationsansicht an einen klaren Feature-Schalter gebunden; Clear-all wird bei aktiver Migration blockiert.
+- `src/secureStore.test.ts`: erste Tests fuer Feature-Schalter, Statuspersistenz, Upload-/Verifikationspfad und Konfliktfall.
+- `docs/sc-md-01-private-first-migration.md`: Verhaltens-, Sicherheits- und Abbruchregeln dokumentiert.
+
+Verifizierter Stand:
+
+- SC-MD-01 ist bereit fuer einen Trockenlauf.
+- Die Migration liest direkt aus IndexedDB und umgeht den normalen remote-first-load-Pfad.
+- Bei unterschiedlichem lokalem und remote entschluesseltem Inhalt erfolgt kein `PUT`.
+- Remote-/Decrypt-Fehler werden nicht mehr als leerer Serverbestand behandelt.
+- Beschaedigte lokale Records fuehren zum Abbruch.
+- Fehlende lokale Kernbereiche bei vorhandenem Remote-Record fuehren zum Fehler.
+- Hashing erfolgt auf kanonisch serialisiertem Klartext.
+- Unterschiedliche IVs oder Ciphertexte bei identischem Inhalt erzeugen keinen Konflikt.
+- Waehrend der Migration gibt es keine `DELETE`-Aufrufe.
+- IndexedDB bleibt nach der Migration erhalten.
+- `completed`/`matched` wird erst nach vollstaendiger Verifikation aller RecordKeys gesetzt.
+
+Restrisiken:
+
+- Der normale App-Boot bleibt ausserhalb der Migration remote-first.
+- Die aeussere Snapshot-Checkbox in `App.tsx` ist noch nicht mit der Panel-Logik gekoppelt.
+- Ein eigener Test fuer einen leeren, aber gueltigen Record fehlt noch.
+
+Abnahme: SC-MD-01 ist nach technischer Sicherheitsabnahme bereit fuer einen kontrollierten Trockenlauf. Kein Commit und kein Push wurden ausgefuehrt.
 
 ## Status der Roadmap
 
