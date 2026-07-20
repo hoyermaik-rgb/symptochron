@@ -23,7 +23,7 @@ describe("SQLite-Medikamentenfundament", () => {
   it("führt alle Migrationen aus und aktiviert Fremdschlüssel", () => {
     const db = getDatabase();
     const versions = db.prepare("SELECT version FROM schema_migrations ORDER BY version").all() as Array<{version:number}>;
-    expect(versions.map(v => v.version)).toEqual([1, 2, 3]);
+    expect(versions.map(v => v.version)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect((db.prepare("PRAGMA foreign_keys").get() as {foreign_keys:number}).foreign_keys).toBe(1);
   });
 

@@ -13,6 +13,8 @@ import { importMedicationJsonIfEmpty } from "./server/database/importMedicationJ
 import { getMedicationCount, searchMedications } from "./server/database/repositories/medicationRepository";
 import { createUserMedication, deleteUserMedication, listUserMedications, recordMedicationIntake } from "./server/database/repositories/userMedicationRepository";
 import { deleteSecureAppRecord, getSecureAppRecord, upsertSecureAppRecord } from "./server/database/repositories/secureAppRecordRepository";
+import { registerPrivateBackupImportRoutes } from "./server/privateBackupImportHttp";
+import { registerPrivateBackupRestoreRoutes } from "./server/privateBackupRestoreHttp";
 
 function sanitizePayload(obj: any): any {
   if (typeof obj === 'string') {
@@ -37,6 +39,8 @@ async function startServer() {
 
   // Middleware to parse JSON bodies
   app.use(express.json());
+  registerPrivateBackupImportRoutes(app);
+  registerPrivateBackupRestoreRoutes(app);
 
   runMigrations();
   importMedicationJsonIfEmpty();

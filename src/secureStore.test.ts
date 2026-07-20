@@ -186,6 +186,20 @@ describe('SC-MD-01 migration helpers', () => {
     expect(result.error).toContain('Lokaler Kernbereich fehlt');
   });
 
+  test('hasAnyRemoteRecords detects server-side secure data after browser reset', async () => {
+    mockDb.clear();
+    mockStorage.clear();
+    await secureStore.init(null);
+    mockRemoteRecords.clear();
+    mockRemoteRecords.set('diary', {
+      encryptionVersion: 1,
+      ivBase64: 'AQIDBAUGBwgJCgsM',
+      ciphertextBase64: 'AQIDBAUGBwgJCgsM',
+    });
+
+    expect(await secureStore.hasAnyRemoteRecords()).toBe(true);
+  });
+
   test('migrateRecord fails on damaged local record', async () => {
     mockDb.clear();
     mockStorage.clear();

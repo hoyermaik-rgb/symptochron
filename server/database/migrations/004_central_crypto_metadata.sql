@@ -1,0 +1,4 @@
+-- Historische Migration 4 fuer zentrale Crypto-Metadaten.
+-- Die vorhandene Datenbankhistorie darf nicht umgeschrieben werden.
+-- Dieses Repo bildet den Stand nur nachvollziehbar ab; die eigentliche
+-- Importschema-Erweiterung liegt auf Version 5.

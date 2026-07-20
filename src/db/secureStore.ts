@@ -54,6 +54,22 @@ class SecureStore {
     return ['diary', 'meds', 'mood', 'surveys', 'appts', 'sos', 'bp', 'prefs', '__pin_verifier'];
   }
 
+  public async hasAnyRemoteRecords(): Promise<boolean> {
+    if (!this.canUseRemoteStore()) return false;
+    for (const key of this.getMigrationRecordKeys()) {
+      try {
+        const response = await fetch(`/api/secure-records/${encodeURIComponent(key)}`, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+        });
+        if (response.ok) return true;
+      } catch {
+        // Ignore transient network issues and keep probing the remaining keys.
+      }
+    }
+    return false;
+  }
+
   public async getLocalRecordKeys(): Promise<string[]> {
     const keys = this.getMigrationRecordKeys();
     const present: string[] = [];

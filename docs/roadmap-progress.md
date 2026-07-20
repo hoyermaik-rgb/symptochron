@@ -42,6 +42,15 @@ Arbeitsregel: Jede Aenderung muss Stabilitaet, Datenschutz, Datenintegritaet, Of
 | 2026-07-10 | AP-12: Chunk-Splitting / lazy loading | `npm run lint` | Erfolgreich | Typ-Sicherheit gewährleistet. |
 | 2026-07-10 | AP-12: Chunk-Splitting / lazy loading | `npm run build` | Erfolgreich | Bundle-Splitting erfolgreich. Hauptchunk um ~45% verringert. |
 
+| 2026-07-18 | SC-DB-08.1: Handy-Backup Analyse | - | Analyse abgeschlossen | `handy-backup.json` schema- und strukturbezogen ausgewertet; Import-Mapping und Schema-Vorschlag dokumentiert, ohne DB oder Produktivcode zu aendern. |
+| 2026-07-18 | SC-DB-08.2A: SQLite-Zielschema | - | Implementiert | Neue Migration `005_handy_backup_import_schema.sql`; die versehentlich kollidierende Version 4 bleibt als `central crypto metadata` historisch erhalten, Import-Repository-Grundlagen und Tests fuer das verbindliche Zielschema fuer den spaeteren Handy-Import angelegt. |
+| 2026-07-18 | SC-DB-08.2B: Backup-Importer | - | Implementiert | Administrative CLI `npm run import:backup` mit Dry-Run, Apply, Verify und Rollback sowie Importreport und Tests fuer Validierung, Konflikte und Snapshot-Regeln angelegt. |
+| 2026-07-18 | SC-DB-08.2C: Admin-Migrationsbefehl | - | Implementiert | Expliziter CLI-Befehl `npm run db:migrate -- --database ...` mit Pflichtpfad, Vor-/Nachpruefung, Idempotenz und Tests gegen implizite Standardpfade angelegt. |
+| 2026-07-18 | SC-DB-08.3.1: Privater Backup-Import-Assistent | - | Implementiert | Private Analyse- und Dry-Run-Oberflaeche mit Dateiupload, Admin-Token-Header, backendseitigen Analyse-/Dry-Run-Endpunkten und technischen Metadaten ohne Gesundheitsinhalte angelegt. |
+| 2026-07-18 | SC-DB-08.3.2: Geschuetzter Snapshot-/Apply-/Verify-Ablauf | - | Implementiert | Kurzlebige Admin-Sitzung mit HttpOnly-Cookie und CSRF, serverseitige Import-Sitzung, automatischer SQLite-Snapshot, atomarer Apply/Verify-Flow und idempotenter Abschlusspruefung angelegt. |
+| 2026-07-18 | SC-DB-08.3.3: Revisionssicheres Importprotokoll und Importhistorie | abgeschlossen | Dauerhafte, revisionssichere Importhistorie innerhalb von `symptochron.db` mit geschuetzter Historienliste, technischem Einzelbericht, Statuswechseln und datensparsamer Fehlerprotokollierung wurde umgesetzt und verifiziert. |
+| 2026-07-18 | SC-DB-08.3.4: Kontrollierter Snapshot-Restore und Rollback-Assistent | abgeschlossen | Manuell ausloesbarer, CSRF-geschuetzter Snapshot-Restore mit Sicherheits-Snapshot, Restore-Sitzung, atomarem Austausch, automatischem Verify und protokolliertem Rollback wurde umgesetzt und verifiziert. |
+
 
 
 

@@ -11,3 +11,10 @@ coverage/
 data/*.db
 data/*.db-wal
 data/*.db-shm
+
+# Backups und Recovery-Artefakte enthalten reale, teils unverschluesselte
+# Gesundheitsdaten - duerfen nicht ins Repository, auch nicht in ein privates.
+backups/
+private_local_only/
+*Converted_Backup*.json
+*_Backup_*.json

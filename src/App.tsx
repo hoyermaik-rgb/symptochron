@@ -58,6 +58,7 @@ import MoodTab from './components/MoodTab';
 import SosTab from './components/SosTab';
 import LegalNotice from './components/LegalNotice';
 import PrivateMigrationPanel from './components/PrivateMigrationPanel';
+import PrivateBackupImportPanel from './components/PrivateBackupImportPanel';
 import { readMigrationStatus, isPrivateMigrationEnabled } from './migration/privateMigration';
 
 // Lazy loaded heavy tabs (AP-11)
@@ -122,12 +123,14 @@ export default function App() {
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [legalInitialTab, setLegalInitialTab] = useState<'impressum' | 'datenschutz'>('impressum');
   const [showDemoModal, setShowDemoModal] = useState(false);
+  const [showPrivateBackupImportModal, setShowPrivateBackupImportModal] = useState(false);
   const [appMode, setAppMode] = useState<'real' | 'demo'>('real');
   const [demoQuery, setDemoQuery] = useState('');
   const [demoResults, setDemoResults] = useState<any[]>([]);
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [privateMigrationVisible, setPrivateMigrationVisible] = useState(false);
+  const privateBackupImportEnabled = import.meta.env.VITE_ENABLE_PRIVATE_BACKUP_IMPORT === 'true';
 
   // Blood Pressure logging States
   const [bpSystolic, setBpSystolic] = useState<number | ''>('');
@@ -173,6 +176,17 @@ export default function App() {
     const loadedBp = await secureStore.load('bp');
     const loadedPrefs = await secureStore.load('prefs');
 
+    const hasLoadedData = Boolean(
+      loadedDiary ||
+      loadedMeds ||
+      loadedMood ||
+      loadedSurveys ||
+      loadedAppts ||
+      loadedSos ||
+      loadedBp ||
+      loadedPrefs
+    );
+
     if (loadedDiary) setDiary(loadedDiary);
     if (loadedMeds) setMeds(loadedMeds);
     if (loadedMood) setMood(loadedMood);
@@ -184,6 +198,7 @@ export default function App() {
     }
     if (loadedBp) setBloodPressure(loadedBp);
     if (loadedPrefs) setUiPrefs(loadedPrefs);
+    if (hasLoadedData) setOnboarded(true);
 
     return true;
   };
@@ -198,7 +213,9 @@ export default function App() {
 
     // Determine Onboarding
     const storedOnboard = localStorage.getItem('symptochron_onboarded');
-    if (storedOnboard === 'true') {
+    const storedSetupComplete = localStorage.getItem('symptochron_setup_completed');
+    const storedPinEnabled = localStorage.getItem(PIN_ENABLED_KEY) === 'true';
+    if (storedOnboard === 'true' || storedSetupComplete === 'true' || storedPinEnabled) {
       setOnboarded(true);
     }
 
@@ -221,6 +238,14 @@ export default function App() {
         }
 
         if (storedPinEnabled) {
+          setPinEnabled(true);
+          setLocked(true);
+          return;
+        }
+
+        const hasRemoteRecords = await secureStore.hasAnyRemoteRecords();
+        if (hasRemoteRecords) {
+          setOnboarded(true);
           setPinEnabled(true);
           setLocked(true);
           return;
@@ -542,18 +567,25 @@ export default function App() {
   const handleCompleteOnboarding = async ({ name, bday, pin, mode }: OnboardingCompletePayload) => {
   setIsBooting(true);
   try {
-    await secureStore.changePin(pinCode, pin, SECURE_DATA_KEYS);
+    localStorage.setItem('symptochron_onboarded', 'true');
+    localStorage.setItem('symptochron_setup_completed', 'true');
+    setOnboarded(true);
 
-    setPinCode(pin);
-    setPinEnabled(true);
-    localStorage.setItem(PIN_ENABLED_KEY, 'true');
-    localStorage.removeItem(LEGACY_PIN_KEY);
+    const hasExistingSecureData = await secureStore.hasAnyRemoteRecords();
+    if (!hasExistingSecureData) {
+      await secureStore.changePin(pinCode, pin, SECURE_DATA_KEYS);
+    } else {
+      setPinCode(pin);
+      setPinEnabled(true);
+      localStorage.setItem(PIN_ENABLED_KEY, 'true');
+      localStorage.removeItem(LEGACY_PIN_KEY);
+      setLocked(true);
+    }
 
     const updatedSos = { ...sosData, patientName: name, dob: bday || '' };
-    syncSosData(updatedSos);
-
-    localStorage.setItem('symptochron_onboarded', 'true');
-    setOnboarded(true);
+    if (!hasExistingSecureData) {
+      syncSosData(updatedSos);
+    }
 
     if (mode === 'demo') {
       triggerSelfSeeding();
@@ -890,6 +922,14 @@ export default function App() {
     if (data.mood) syncMood(data.mood);
     if (data.rlsSurveys) syncSurveys(data.rlsSurveys);
     if (data.sosData) syncSosData(data.sosData);
+    if (data.appointments) syncAppointments(data.appointments);
+    if (data.bloodPressure) syncBp(data.bloodPressure);
+
+    // Restores are only meaningful after the app is marked as initialized once.
+    localStorage.setItem('symptochron_onboarded', 'true');
+    localStorage.setItem('symptochron_setup_completed', 'true');
+    setOnboarded(true);
+
     localStorage.setItem(APP_MODE_KEY, 'real');
     localStorage.removeItem('symptochron_seeded');
     setAppMode('real');
@@ -1372,6 +1412,22 @@ export default function App() {
                     </button>
                   </div>
                 )}
+
+                {privateBackupImportEnabled && (
+                  <div className="space-y-2.5 pt-2 border-t border-slate-850/60">
+                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">📦 Private Backup-Analyse</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSettingsDrawer(false);
+                        setShowPrivateBackupImportModal(true);
+                      }}
+                      className="w-full py-3 bg-cyan-600/10 hover:bg-cyan-600/15 border border-cyan-500/20 text-cyan-400 rounded-xl text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                      Private Analyse öffnen
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="text-[9px] text-slate-600 font-mono text-center pt-8 space-y-2 flex flex-col items-center">
@@ -1618,6 +1674,28 @@ export default function App() {
             </div>
 
             <PrivateMigrationPanel showToast={showToast} />
+          </div>
+        </div>
+      )}
+
+      {showPrivateBackupImportModal && privateBackupImportEnabled && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+          <div className="w-full max-w-3xl max-h-[92vh] overflow-y-auto rounded-3xl border border-slate-800 bg-slate-900 p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-100">Private administrative Importfunktion</h3>
+                <p className="text-xs text-slate-400">Dateianalyse und Dry-Run ohne Produktivimport. Keine Gesundheitsinhalte in der Oberfläche.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPrivateBackupImportModal(false)}
+                className="rounded-xl border border-slate-800 px-3 py-1.5 text-xs text-slate-300"
+              >
+                Schließen
+              </button>
+            </div>
+
+            <PrivateBackupImportPanel showToast={showToast} />
           </div>
         </div>
       )}
